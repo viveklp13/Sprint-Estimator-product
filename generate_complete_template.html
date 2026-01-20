@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sprint Estimator V4 - Complete Template Generator</title>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; padding: 40px; background: #f0f0f0; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #4F46E5; }
+        .btn { padding: 12px 24px; background: #4F46E5; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin: 10px; }
+        .btn:hover { background: #4338CA; }
+        .info { background: #E0E7FF; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .note { color: #6B7280; font-size: 14px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📊 Complete Template Generator</h1>
+    <p>Download the complete Excel template with <strong>all 21 columns</strong> including productivity tracking data.</p>
+    
+    <div class="info">
+        <h3>Template Includes:</h3>
+        <ul>
+            <li>✅ Project & Feature Information (7 columns)</li>
+            <li>✅ User Story Estimation (5 columns)</li>
+            <li>✅ Actual Productivity Tracking (3 columns)</li>
+            <li>✅ Phase-wise Actual Efforts (4 columns)</li>
+            <li>✅ Defect Tracking (2 columns)</li>
+        </ul>
+    </div>
+    
+    <button class="btn" onclick="downloadFullTemplate()">⬇ Download Complete Template (21 Columns)</button>
+    <button class="btn" onclick="downloadBasicTemplate()">⬇ Download Basic Template (11 Columns)</button>
+    
+    <div class="note">
+        <p><strong>Complete Template:</strong> Use when you want to import estimation AND actual productivity data</p>
+        <p><strong>Basic Template:</strong> Use when you only need to import estimation data</p>
+    </div>
+    
+    <div id="result"></div>
+</div>
+
+<script>
+function downloadFullTemplate() {
+    const headers = [
+        'Project Name',
+        'Project Description',
+        'Feature Name',
+        'Org Productivity',
+        'Man Days Hours',
+        'Feature Start Date',
+        'Feature End Date',
+        'SIT Defects',
+        'UAT Defects',
+        'Story Title',
+        'Story Hours (Est)',
+        'Story Start Date (Est)',
+        'Story End Date (Est)',
+        'Is Completed',
+        'Story Hours (Actual)',
+        'Story Start Date (Actual)',
+        'Story End Date (Actual)',
+        'Actual Requirements MD',
+        'Actual Design MD',
+        'Actual Testing MD',
+        'Actual PM MD'
+    ];
+    
+    const sampleData = [
+        ['E-Commerce Platform','Online shopping system','User Authentication','2','8','2025-01-10','2025-02-15','18','2','Login page UI','16','2025-01-10','2025-01-15','TRUE','18','2025-01-11','2025-01-16','3.5','2.8','4.2','2.5'],
+        ['E-Commerce Platform','Online shopping system','User Authentication','2','8','2025-01-10','2025-02-15','18','2','Registration form','24','2025-01-16','2025-01-22','TRUE','26','2025-01-17','2025-01-24','','','',''],
+        ['E-Commerce Platform','Online shopping system','User Authentication','2','8','2025-01-10','2025-02-15','18','2','Password reset flow','8','2025-01-23','2025-01-25','TRUE','10','2025-01-24','2025-01-26','','','',''],
+        ['E-Commerce Platform','Online shopping system','Product Catalog','2','8','2025-02-01','2025-03-15','15','5','Product listing page','20','2025-02-01','2025-02-08','TRUE','22','2025-02-02','2025-02-09','2.8','3.2','5.5','3.0'],
+        ['E-Commerce Platform','Online shopping system','Product Catalog','2','8','2025-02-01','2025-03-15','15','5','Search functionality','32','2025-02-09','2025-02-20','FALSE','','','','','','',''],
+        ['E-Commerce Platform','Online shopping system','Product Catalog','2','8','2025-02-01','2025-03-15','15','5','Filter by category','16','2025-02-21','2025-02-28','FALSE','','','','','','',''],
+        ['Mobile App','Customer mobile application','Dashboard','1.8','8','2025-01-20','2025-02-28','12','3','Home screen layout','12','2025-01-20','2025-01-24','TRUE','14','2025-01-21','2025-01-25','2.2','1.8','3.5','2.0'],
+        ['Mobile App','Customer mobile application','Dashboard','1.8','8','2025-01-20','2025-02-28','12','3','Charts and graphs','16','2025-01-25','2025-01-30','TRUE','18','2025-01-26','2025-01-31','','','',''],
+        ['Mobile App','Customer mobile application','Dashboard','1.8','8','2025-01-20','2025-02-28','12','3','Notifications panel','10','2025-01-31','2025-02-05','FALSE','','','','','','',''],
+        ['Mobile App','Customer mobile application','User Profile','1.8','8','2025-02-10','2025-03-10','','','Profile view page','14','2025-02-10','2025-02-16','FALSE','','','','','','',''],
+        ['','','','','','','','','','','','','','','','','','','','',''],
+        ['','','','','','','','','','','','','','','','','','','','','']
+    ];
+    
+    let csv = headers.join(',') + '\n';
+    sampleData.forEach(row => csv += row.join(',') + '\n');
+    
+    downloadCSV(csv, 'sprint_estimator_complete_template.csv');
+    showMessage('✅ Complete template downloaded! (21 columns with productivity data)');
+}
+
+function downloadBasicTemplate() {
+    const headers = [
+        'Project Name',
+        'Project Description',
+        'Feature Name',
+        'Org Productivity',
+        'Man Days Hours',
+        'Feature Start Date',
+        'Feature End Date',
+        'SIT Defects',
+        'UAT Defects',
+        'Story Title',
+        'Story Hours (Est)'
+    ];
+    
+    const sampleData = [
+        ['E-Commerce Platform','Online shopping system','User Authentication','2','8','2025-01-10','2025-02-15','','','Login page UI','16'],
+        ['E-Commerce Platform','Online shopping system','User Authentication','2','8','2025-01-10','2025-02-15','','','Registration form','24'],
+        ['E-Commerce Platform','Online shopping system','User Authentication','2','8','2025-01-10','2025-02-15','','','Password reset flow','8'],
+        ['E-Commerce Platform','Online shopping system','Product Catalog','2','8','2025-02-01','2025-03-15','','','Product listing page','20'],
+        ['E-Commerce Platform','Online shopping system','Product Catalog','2','8','2025-02-01','2025-03-15','','','Search functionality','32'],
+        ['Mobile App','Customer mobile application','Dashboard','1.8','8','2025-01-20','2025-02-28','','','Home screen layout','12'],
+        ['Mobile App','Customer mobile application','Dashboard','1.8','8','2025-01-20','2025-02-28','','','Charts and graphs','16'],
+        ['','','','','','','','','','',''],
+        ['','','','','','','','','','','']
+    ];
+    
+    let csv = headers.join(',') + '\n';
+    sampleData.forEach(row => csv += row.join(',') + '\n');
+    
+    downloadCSV(csv, 'sprint_estimator_basic_template.csv');
+    showMessage('✅ Basic template downloaded! (11 columns for planning only)');
+}
+
+function downloadCSV(csv, filename) {
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function showMessage(msg) {
+    document.getElementById('result').innerHTML = '<div style="background: #D1FAE5; color: #065F46; padding: 15px; border-radius: 8px; margin-top: 20px;">' + msg + '</div>';
+}
+
+// Show initial message
+window.onload = function() {
+    showMessage('Click a button above to download your template!');
+};
+</script>
+</body>
+</html>

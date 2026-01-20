@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprint Estimator V4 - Complete</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .fade-in { animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; padding: 20px; border-radius: 10px; max-width: 90%; max-height: 90%; overflow: auto; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div id="app"></div>
+
+    <!-- Import Modal -->
+    <div id="importModal" class="modal">
+        <div class="modal-content max-w-3xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">📊 Import from Excel</h2>
+                <button onclick="closeImportModal()" class="text-2xl hover:text-red-600">&times;</button>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+                    <h3 class="font-semibold mb-2">📥 Basic Template</h3>
+                    <p class="text-sm text-gray-600 mb-3">For planning & estimation only (11 columns)</p>
+                    <button onclick="downloadBasicTemplate()" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        ⬇ Download Basic
+                    </button>
+                </div>
+                
+                <div class="p-4 bg-purple-50 rounded-lg border-2 border-purple-200">
+                    <h3 class="font-semibold mb-2">📥 Complete Template</h3>
+                    <p class="text-sm text-gray-600 mb-3">Includes productivity tracking (21 columns)</p>
+                    <button onclick="downloadCompleteTemplate()" class="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                        ⬇ Download Complete
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mb-6 p-4 bg-yellow-50 rounded-lg">
+                <h3 class="font-semibold mb-2">📤 Upload Filled Template</h3>
+                <p class="text-sm text-gray-600 mb-3">After filling, save as CSV and upload here</p>
+                <input type="file" id="importFile" accept=".csv" class="mb-3 w-full p-2 border rounded">
+                <button onclick="uploadFile()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                    📤 Upload & Import
+                </button>
+            </div>
+            
+            <div id="importProgress" class="hidden mb-4 p-4 bg-yellow-50 rounded-lg">
+                <p class="text-center">⏳ Processing...</p>
+            </div>
+            
+            <div id="importResult" class="hidden"></div>
+            
+            <div class="mt-4 p-4 bg-gray-50 rounded-lg text-sm">
+                <h4 class="font-semibold mb-2">ℹ️ Important:</h4>
+                <ul class="list-disc list-inside space-y-1 text-gray-600">
+                    <li>Save Excel as <strong>CSV</strong> before uploading</li>
+                    <li><strong>Basic:</strong> Project planning only</li>
+                    <li><strong>Complete:</strong> Includes actual hours, defects, phase efforts</li>
+                    <li>Both templates work with the same import</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+
+    
+    <!-- Modals for Charts -->
+    <div id="productivityModal" class="modal"><div class="modal-content w-full max-w-6xl"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Productivity Chart</h2><button onclick="closeChartModal('productivityModal')" class="text-2xl">&times;</button></div><canvas id="productivityChart"></canvas><div class="mt-4 grid grid-cols-4 gap-4"><div class="bg-blue-50 p-4 rounded"><p class="text-sm font-semibold">Mean</p><p class="text-2xl font-bold" id="prodMean">0</p></div><div class="bg-red-50 p-4 rounded"><p class="text-sm font-semibold">UCL</p><p class="text-2xl font-bold" id="prodUCL">0</p></div><div class="bg-green-50 p-4 rounded"><p class="text-sm font-semibold">LCL</p><p class="text-2xl font-bold" id="prodLCL">0</p></div><div class="bg-purple-50 p-4 rounded"><p class="text-sm font-semibold">Features</p><p class="text-2xl font-bold" id="prodCount">0</p></div></div></div></div>
+    
+    <div id="effortVarianceModal" class="modal"><div class="modal-content w-full max-w-6xl"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Effort Variance Chart</h2><button onclick="closeChartModal('effortVarianceModal')" class="text-2xl">&times;</button></div><canvas id="effortChart"></canvas><div class="mt-4 grid grid-cols-4 gap-4"><div class="bg-blue-50 p-4 rounded"><p class="text-sm font-semibold">Mean</p><p class="text-2xl font-bold" id="effortMean">0</p></div><div class="bg-red-50 p-4 rounded"><p class="text-sm font-semibold">UCL</p><p class="text-2xl font-bold" id="effortUCL">0</p></div><div class="bg-green-50 p-4 rounded"><p class="text-sm font-semibold">LCL</p><p class="text-2xl font-bold" id="effortLCL">0</p></div><div class="bg-purple-50 p-4 rounded"><p class="text-sm font-semibold">Features</p><p class="text-2xl font-bold" id="effortCount">0</p></div></div></div></div>
+    
+    <div id="ontimeModal" class="modal"><div class="modal-content w-full max-w-6xl"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Ontime Index Chart</h2><button onclick="closeChartModal('ontimeModal')" class="text-2xl">&times;</button></div><canvas id="ontimeChart"></canvas><div class="mt-4 grid grid-cols-4 gap-4"><div class="bg-blue-50 p-4 rounded"><p class="text-sm font-semibold">Mean</p><p class="text-2xl font-bold" id="ontimeMean">0</p></div><div class="bg-red-50 p-4 rounded"><p class="text-sm font-semibold">UCL</p><p class="text-2xl font-bold" id="ontimeUCL">0</p></div><div class="bg-green-50 p-4 rounded"><p class="text-sm font-semibold">LCL</p><p class="text-2xl font-bold" id="ontimeLCL">0</p></div><div class="bg-purple-50 p-4 rounded"><p class="text-sm font-semibold">Features</p><p class="text-2xl font-bold" id="ontimeCount">0</p></div></div></div></div>
+
+    <!-- DRE Modal -->
+    <div id="dreModal" class="modal">
+        <div class="modal-content w-full max-w-6xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Mean Defect Removal Efficiency Chart</h2>
+                <button onclick="closeChartModal('dreModal')" class="text-2xl">&times;</button>
+            </div>
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="bg-purple-50 p-4 rounded-lg text-center">
+                    <p class="text-sm text-gray-600">Mean DRE</p>
+                    <p class="text-2xl font-bold text-purple-700" id="dreMean">0</p>
+                </div>
+                <div class="bg-red-50 p-4 rounded-lg text-center">
+                    <p class="text-sm text-gray-600">UCL</p>
+                    <p class="text-2xl font-bold text-red-700" id="dreUCL">0</p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg text-center">
+                    <p class="text-sm text-gray-600">LCL</p>
+                    <p class="text-2xl font-bold text-green-700" id="dreLCL">0</p>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg text-center">
+                    <p class="text-sm text-gray-600">Features</p>
+                    <p class="text-2xl font-bold text-gray-700" id="dreCount">0</p>
+                </div>
+            </div>
+            <canvas id="dreChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let currentPage='dashboard',projects=[],currentProject=null,features=[],currentFeature=null,charts={};
+        loadProjects();
+        
+        function render(){currentPage==='dashboard'?renderDashboard():currentPage==='project'?renderProjectView():currentPage==='estimator'?renderEstimator():renderProductivityTracker()}
+        
+        function renderDashboard(){document.getElementById('app').innerHTML=`<div class="container mx-auto p-6"><div class="flex justify-between items-center mb-6"><h1 class="text-4xl font-bold">Sprint Estimator V4</h1><div class="flex gap-3"><button onclick="openImportModal()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">📊 Import Excel</button><button onclick="createProject()" class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">+ New Project</button></div></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">${projects.map(p=>`<div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition fade-in"><div class="flex justify-between items-start mb-4"><h2 class="text-xl font-bold">${p.name}</h2><div class="flex gap-2"><button onclick="editProject(${p.id})" class="text-blue-600">✎</button><button onclick="deleteProject(${p.id})" class="text-red-600">×</button></div></div><p class="text-gray-600 text-sm mb-4">${p.description||'No description'}</p><div class="grid grid-cols-2 gap-3 mb-4"><div class="bg-blue-50 p-3 rounded"><p class="text-xs text-blue-600 font-semibold">Features</p><p class="text-2xl font-bold">${p.featureCount}</p></div><div class="bg-purple-50 p-3 rounded"><p class="text-xs text-purple-600 font-semibold">Story Points</p><p class="text-2xl font-bold">${p.totalStoryPoints.toFixed(0)}</p></div></div>${p.avgProductivity>0?`<div class="grid grid-cols-1 gap-2 mb-4"><div class="bg-green-50 p-3 rounded cursor-pointer hover:bg-green-100" onclick="showChart(${p.id},'productivity')"><p class="text-xs text-green-600 font-semibold">Mean Productivity (Click)</p><p class="text-2xl font-bold">${p.avgProductivity.toFixed(4)}</p></div><div class="bg-orange-50 p-3 rounded cursor-pointer hover:bg-orange-100" onclick="showChart(${p.id},'effortVariance')"><p class="text-xs text-orange-600 font-semibold">Mean Effort Variance (Click)</p><p class="text-2xl font-bold">${p.avgEffortVariance.toFixed(2)}%</p></div><div class="bg-cyan-50 p-3 rounded cursor-pointer hover:bg-cyan-100" onclick="showChart(${p.id},'ontimeIndex')"><p class="text-xs text-cyan-600 font-semibold">Mean Ontime Index (Click)</p><p class="text-2xl font-bold">${p.avgOntimeIndex.toFixed(2)}%</p></div></div>`:''} ${p.avgDefectRemovalEfficiency!==undefined && p.dreStats && p.dreStats.featureCount>0?`<div class="bg-purple-50 p-3 rounded cursor-pointer hover:bg-purple-100 mb-4" onclick="showChart(${p.id},'dre')"><p class="text-xs text-purple-600 font-semibold">Mean DRE (Click)</p><p class="text-2xl font-bold">${p.avgDefectRemovalEfficiency.toFixed(2)}%</p></div>`:''}<button onclick="openProject(${p.id})" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Open →</button></div>`).join('')}</div></div>`}
+        
+        function renderProjectView(){document.getElementById('app').innerHTML=`<div class="container mx-auto p-6"><div class="flex items-center gap-4 mb-6"><button onclick="currentPage='dashboard';render()" class="px-4 py-2 bg-white rounded-lg shadow">← Back</button><h1 class="text-3xl font-bold">${currentProject.name}</h1><button onclick="currentPage='productivity';render()" class="ml-auto px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700">📊 Productivity Tracker</button></div><div class="bg-white rounded-xl shadow-lg p-6 mb-6"><button onclick="createFeature()" class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">+ New Feature</button></div><div class="grid gap-6">${features.map(f=>`<div class="bg-white rounded-xl shadow-lg p-6 fade-in"><div class="flex justify-between mb-4"><div><h3 class="text-xl font-bold">${f.name}</h3><p class="text-sm text-gray-500">${f.estimatedStartDate||''} → ${f.targetEndDate||''}</p></div><div class="flex gap-2"><button onclick="editFeature(${f.id})" class="text-blue-600">✎</button><button onclick="deleteFeature(${f.id})" class="text-red-600">×</button></div></div><div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4"><div class="bg-purple-50 p-3 rounded"><p class="text-xs font-semibold">Story Points</p><p class="text-xl font-bold">${f.totalStoryPoints.toFixed(2)}</p></div><div class="bg-blue-50 p-3 rounded"><p class="text-xs font-semibold">Dev MD</p><p class="text-xl font-bold">${f.totalManDays.toFixed(2)}</p></div><div class="bg-green-50 p-3 rounded"><p class="text-xs font-semibold">Stories</p><p class="text-xl font-bold">${f.stories.length}</p></div><div class="bg-orange-50 p-3 rounded"><p class="text-xs font-semibold">Org Prod</p><p class="text-xl font-bold">${f.orgProductivity}</p></div></div><div class="bg-gray-50 p-4 rounded"><h4 class="font-semibold mb-2">Phase Breakdown:</h4><div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm"><div>Req: ${f.phaseBreakdown.requirement}</div><div>Design: ${f.phaseBreakdown.design}</div><div>Dev: ${f.phaseBreakdown.development}</div><div>Test: ${f.phaseBreakdown.testing}</div><div>PM: ${f.phaseBreakdown.pm}</div></div></div></div>`).join('')}</div></div>`}
+        
+        function renderEstimator(){const isEdit=currentFeature!==null,feature=currentFeature||{name:'',orgProductivity:2,manDaysHours:8,estimatedStartDate:'',targetEndDate:'',stories:[]};document.getElementById('app').innerHTML=`<div class="container mx-auto p-6 max-w-6xl"><div class="flex items-center gap-4 mb-6"><button onclick="currentPage='project';currentFeature=null;render()" class="px-4 py-2 bg-white rounded-lg shadow">← Back</button><h1 class="text-3xl font-bold">${isEdit?'Edit':'Create'} Feature</h1></div><div class="bg-white rounded-xl shadow-lg p-8"><div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6"><div class="md:col-span-2"><label class="block text-sm font-semibold mb-2">Feature Name</label><input type="text" id="featureName" value="${feature.name}" class="w-full px-4 py-2 border rounded-lg"></div><div><label class="block text-sm font-semibold mb-2">Org Productivity</label><input type="number" id="orgProductivity" value="${feature.orgProductivity}" step="0.1" class="w-full px-4 py-2 border rounded-lg"></div><div><label class="block text-sm font-semibold mb-2">Man Days Hours</label><input type="number" id="manDaysHours" value="${feature.manDaysHours}" step="0.1" class="w-full px-4 py-2 border rounded-lg"></div><div><label class="block text-sm font-semibold mb-2">Est. Start Date</label><input type="date" id="featureStartDate" value="${feature.estimatedStartDate||''}" class="w-full px-4 py-2 border rounded-lg"></div><div><label class="block text-sm font-semibold mb-2">Target End Date</label><input type="date" id="featureEndDate" value="${feature.targetEndDate||''}" class="w-full px-4 py-2 border rounded-lg"></div></div><div class="mb-6"><div class="flex justify-between mb-4"><h3 class="text-lg font-bold">User Stories</h3><button onclick="addStory()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">+ Add Story</button></div><div id="storiesContainer"></div></div><div class="bg-gray-50 p-6 rounded-lg mb-6"><h3 class="text-lg font-bold mb-4">Summary</h3><div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm"><div>Total SP: <strong id="totalStoryPoints">0.00</strong></div><div>Dev MD: <strong id="totalManDays">0.00</strong></div><div>Total MD: <strong id="totalProjectManDays">0.00</strong></div></div></div><button onclick="saveFeature()" class="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-lg font-semibold">${isEdit?'Update':'Save'} Feature</button></div></div>`;window.estimatorStories=feature.stories||[];renderStories();updateSummary()}
+        
+        function renderProductivityTracker(){document.getElementById('app').innerHTML=`<div class="container mx-auto p-6"><div class="flex items-center gap-4 mb-6"><button onclick="currentPage='project';render()" class="px-4 py-2 bg-white rounded-lg shadow">← Back</button><h1 class="text-3xl font-bold">Productivity Tracker</h1></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">${features.map(f=>`<button onclick="selectFeatureForProductivity(${f.id})" class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition text-left"><h3 class="font-bold mb-2">${f.name}</h3><div class="text-sm text-gray-600"><p>SP: ${f.totalStoryPoints.toFixed(2)}</p><p>Stories: ${f.stories.length}</p>${f.productivity>0?`<p class="text-green-600 font-semibold mt-2">Productivity: ${f.productivity.toFixed(4)}</p><p class="text-orange-600 font-semibold">Effort Var: ${f.effortVariance.toFixed(2)}%</p><p class="text-cyan-600 font-semibold">Ontime: ${f.ontimeIndex.toFixed(2)}%</p><p class="text-purple-600 font-semibold">DRE: ${f.defectRemovalEfficiency ? f.defectRemovalEfficiency.toFixed(2) : '0.00'}%</p>`:''}</div></button>`).join('')}</div><div id="productivityForm"></div></div>`}
+        
+        
+        async function selectFeatureForProductivity(featureId){const feature=features.find(f=>f.id===featureId);if(!feature)return;const response=await fetch(`api/productivity.php?feature_id=${featureId}`);const existingData=await response.json();const estimated=feature.phaseBreakdown;const actual=feature.actualPhaseEfforts||{requirement:0,design:0,development:0,testing:0,pm:0,total:0};document.getElementById('productivityForm').innerHTML=`<div class="bg-white rounded-xl shadow-lg p-8"><h2 class="text-2xl font-bold mb-6">${feature.name}</h2><div class="bg-blue-50 p-4 rounded-lg mb-6"><h3 class="font-bold text-lg mb-3">Phase-wise Breakdown</h3><div class="grid grid-cols-2 gap-4"><div><h4 class="font-semibold text-sm mb-2">Estimated (MD)</h4><div class="space-y-1 text-sm"><div>Requirements: <strong>${estimated.requirement}</strong></div><div>Design: <strong>${estimated.design}</strong></div><div>Development: <strong>${estimated.development}</strong></div><div>Testing: <strong>${estimated.testing}</strong></div><div>PM: <strong>${estimated.pm}</strong></div><div class="text-lg font-bold mt-2">Total: <strong>${estimated.total}</strong></div></div></div><div><h4 class="font-semibold text-sm mb-2">Actual Efforts (MD)</h4><div class="space-y-2"><div><label class="text-xs">Requirements:</label><input type="number" id="actualReq" value="${actual.requirement}" step="0.1" min="0" onchange="updatePhaseTotal()" class="w-full px-2 py-1 border rounded text-sm"></div><div><label class="text-xs">Design:</label><input type="number" id="actualDesign" value="${actual.design}" step="0.1" min="0" onchange="updatePhaseTotal()" class="w-full px-2 py-1 border rounded text-sm"></div><div><label class="text-xs">Development:</label><input type="number" id="actualDev" value="${actual.development}" step="0.1" min="0" readonly class="w-full px-2 py-1 border rounded text-sm bg-gray-100" title="Auto-calculated from story efforts"></div><div><label class="text-xs">Testing:</label><input type="number" id="actualTesting" value="${actual.testing}" step="0.1" min="0" onchange="updatePhaseTotal()" class="w-full px-2 py-1 border rounded text-sm"></div><div><label class="text-xs">PM:</label><input type="number" id="actualPm" value="${actual.pm}" step="0.1" min="0" onchange="updatePhaseTotal()" class="w-full px-2 py-1 border rounded text-sm"></div><div class="text-lg font-bold mt-2">Total: <strong id="actualTotalDisplay">0.00</strong></div></div></div></div></div><div class="overflow-x-auto mb-6"><table class="w-full"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-sm font-semibold">Story</th><th class="px-4 py-3 text-center text-sm font-semibold">Est. Hours</th><th class="px-4 py-3 text-center text-sm font-semibold">SP</th><th class="px-4 py-3 text-center text-sm font-semibold">Hours Taken</th><th class="px-4 py-3 text-center text-sm font-semibold">Actual Start</th><th class="px-4 py-3 text-center text-sm font-semibold">Actual End</th><th class="px-4 py-3 text-center text-sm font-semibold">Completed</th><th class="px-4 py-3 text-center text-sm font-semibold">Efforts MD</th></tr></thead><tbody id="productivityTableBody">${feature.stories.map(s=>{const existing=existingData.find(d=>d.storyId===s.id);return`<tr class="border-b"><td class="px-4 py-3">${s.title}<br><small class="text-gray-500">${s.estimatedStartDate||''} → ${s.targetEndDate||''}</small></td><td class="px-4 py-3 text-center">${s.hours}</td><td class="px-4 py-3 text-center">${s.storyPoints.toFixed(2)}</td><td class="px-4 py-3"><input type="number" id="hoursTaken_${s.id}" value="${existing?existing.hoursTaken:''}" step="0.1" onchange="updateProductivitySummary(${featureId})" class="w-full px-3 py-2 border rounded-lg text-center"></td><td class="px-4 py-3"><input type="date" id="actualStart_${s.id}" value="${existing?existing.actualStartDate:''}" class="w-full px-3 py-2 border rounded-lg text-center"></td><td class="px-4 py-3"><input type="date" id="actualEnd_${s.id}" value="${existing?existing.actualEndDate:''}" class="w-full px-3 py-2 border rounded-lg text-center"></td><td class="px-4 py-3 text-center"><input type="checkbox" id="completed_${s.id}" ${existing&&existing.isCompleted?'checked':''} class="w-5 h-5"></td><td class="px-4 py-3 text-center" id="effortsManDays_${s.id}">${existing?existing.effortsManDays.toFixed(2):'0.00'}</td></tr>`}).join('')}</tbody></table></div><div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6"><div class="bg-purple-50 p-4 rounded"><p class="text-sm font-semibold">Total SP</p><p class="text-2xl font-bold">${feature.totalStoryPoints.toFixed(2)}</p></div><div class="bg-blue-50 p-4 rounded"><p class="text-sm font-semibold">Total Dev. Efforts MD</p><p class="text-2xl font-bold" id="totalDevEffortsManDays">0.00</p></div><div class="bg-cyan-50 p-4 rounded"><p class="text-sm font-semibold">Total Efforts MD</p><p class="text-2xl font-bold" id="totalEffortsManDays">0.00</p></div><div class="bg-green-50 p-4 rounded"><p class="text-sm font-semibold">Productivity</p><p class="text-2xl font-bold" id="calculatedProductivity">0.00</p></div><div class="bg-orange-50 p-4 rounded"><p class="text-sm font-semibold">Effort Variance</p><p class="text-2xl font-bold" id="effortVarianceDisplay">0.00%</p></div></div>
+                
+                <div class="bg-yellow-50 p-6 rounded-lg mb-6">
+                    <h3 class="font-bold text-lg mb-4">Testing Defects</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">SIT Defects (Found in System Testing)</label>
+                            <input type="number" id="sitDefects" value="${feature.sitDefects || 0}" min="0" step="1" onchange="updateDRE()" class="w-full px-4 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">UAT Defects (Found in User Testing)</label>
+                            <input type="number" id="uatDefects" value="${feature.uatDefects || 0}" min="0" step="1" onchange="updateDRE()" class="w-full px-4 py-2 border rounded-lg">
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded-lg">
+                            <p class="text-sm font-semibold text-gray-600 mb-1">Defect Removal Efficiency</p>
+                            <p class="text-3xl font-bold text-purple-700" id="dreDisplay">0.00%</p>
+                            <p class="text-xs text-gray-500 mt-1">DRE = SIT / (SIT + UAT) × 100</p>
+                        </div>
+                    </div>
+                </div><button onclick="saveProductivityData(${featureId})" class="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-lg font-semibold">Save Productivity Data</button></div>`;window.currentProductivityFeature=feature;updateProductivitySummary(featureId);updateDRE()}
+        
+        function updatePhaseTotal(){const req=parseFloat(document.getElementById('actualReq').value)||0,design=parseFloat(document.getElementById('actualDesign').value)||0,dev=parseFloat(document.getElementById('actualDev').value)||0,testing=parseFloat(document.getElementById('actualTesting').value)||0,pm=parseFloat(document.getElementById('actualPm').value)||0,total=req+design+dev+testing+pm;document.getElementById('actualTotalDisplay').textContent=total.toFixed(2);document.getElementById('totalEffortsManDays').textContent=total.toFixed(2);const feature=window.currentProductivityFeature;if(feature){const estimatedTotal=feature.phaseBreakdown.total,variance=estimatedTotal>0?((total-estimatedTotal)/estimatedTotal)*100:0;document.getElementById('effortVarianceDisplay').textContent=variance.toFixed(2)+'%'}}
+        
+        function updateProductivitySummary(featureId){const feature=window.currentProductivityFeature;if(!feature)return;const manDaysHours=feature.manDaysHours;let totalDevEffortsManDays=0;feature.stories.forEach(s=>{const hoursTaken=parseFloat(document.getElementById(`hoursTaken_${s.id}`).value)||0,effortsManDays=hoursTaken/manDaysHours;document.getElementById(`effortsManDays_${s.id}`).textContent=effortsManDays.toFixed(2);totalDevEffortsManDays+=effortsManDays});document.getElementById('actualDev').value=totalDevEffortsManDays.toFixed(2);document.getElementById('totalDevEffortsManDays').textContent=totalDevEffortsManDays.toFixed(2);const productivity=totalDevEffortsManDays>0?feature.totalStoryPoints/totalDevEffortsManDays:0;document.getElementById('calculatedProductivity').textContent=productivity.toFixed(4);updatePhaseTotal()}
+        
+        
+        function updateDRE() {
+            const sitDefects = parseInt(document.getElementById('sitDefects').value) || 0;
+            const uatDefects = parseInt(document.getElementById('uatDefects').value) || 0;
+            const totalDefects = sitDefects + uatDefects;
+            
+            let dre = 0;
+            if (totalDefects > 0) {
+                dre = (sitDefects / totalDefects) * 100;
+            }
+            
+            document.getElementById('dreDisplay').textContent = dre.toFixed(2) + '%';
+        }
+        
+        async function saveProductivityData(featureId){const feature=window.currentProductivityFeature;if(!feature)return;const manDaysHours=feature.manDaysHours,stories=[];let totalDevEffortsManDays=0;for(const story of feature.stories){const hoursTaken=parseFloat(document.getElementById(`hoursTaken_${story.id}`).value)||0;if(hoursTaken>0){const effortsManDays=hoursTaken/manDaysHours,actualStart=document.getElementById(`actualStart_${story.id}`).value,actualEnd=document.getElementById(`actualEnd_${story.id}`).value,isCompleted=document.getElementById(`completed_${story.id}`).checked;stories.push({storyId:story.id,hoursTaken,effortsManDays,actualStartDate:actualStart,actualEndDate:actualEnd,isCompleted});totalDevEffortsManDays+=effortsManDays}}if(!stories.length){alert('Please enter hours for at least one story');return}const productivity=totalDevEffortsManDays>0?feature.totalStoryPoints/totalDevEffortsManDays:0,actualReq=parseFloat(document.getElementById('actualReq').value)||0,actualDesign=parseFloat(document.getElementById('actualDesign').value)||0,actualTesting=parseFloat(document.getElementById('actualTesting').value)||0,actualPm=parseFloat(document.getElementById('actualPm').value)||0,actualTotal=actualReq+actualDesign+totalDevEffortsManDays+actualTesting+actualPm,sitDefects=parseInt(document.getElementById('sitDefects').value)||0,uatDefects=parseInt(document.getElementById('uatDefects').value)||0;const prodResponse=await fetch('api/productivity.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({featureId,productivity,stories})});if(prodResponse.ok){const phaseResponse=await fetch('api/features.php',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:featureId,phaseEffortsUpdate:true,actualReqMD:actualReq,actualDesignMD:actualDesign,actualDevMD:totalDevEffortsManDays,actualTestingMD:actualTesting,actualPmMD:actualPm,actualTotalMD:actualTotal})});if(phaseResponse.ok){const defectResponse=await fetch('api/features.php',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:featureId,defectsUpdate:true,sitDefects:sitDefects,uatDefects:uatDefects})});if(defectResponse.ok){alert('Saved!');await loadProjects();currentPage='project';render()}else{alert('Defect data save failed')}}else{alert('Phase efforts save failed')}}}
+        
+        function addStory(){window.estimatorStories.push({id:Date.now(),title:'',hours:0,estimatedStartDate:'',targetEndDate:''});renderStories()}
+        
+        function removeStory(id){window.estimatorStories=window.estimatorStories.filter(s=>s.id!==id);renderStories()}
+        
+        function renderStories(){const container=document.getElementById('storiesContainer');if(!container)return;const orgProd=parseFloat(document.getElementById('orgProductivity')?.value)||2,manDaysHours=parseFloat(document.getElementById('manDaysHours')?.value)||8;container.innerHTML=window.estimatorStories.map((s,idx)=>{const manDays=s.hours/manDaysHours,storyPoints=manDays*orgProd;return`<div class="grid grid-cols-12 gap-3 mb-3 items-center"><input type="text" value="${s.title}" onchange="window.estimatorStories[${idx}].title=this.value" placeholder="Story Title" class="col-span-3 px-3 py-2 border rounded-lg"><input type="number" value="${s.hours}" onchange="window.estimatorStories[${idx}].hours=parseFloat(this.value)||0;renderStories()" placeholder="Hours" step="0.1" class="col-span-1 px-3 py-2 border rounded-lg"><input type="date" value="${s.estimatedStartDate||''}" onchange="window.estimatorStories[${idx}].estimatedStartDate=this.value" class="col-span-2 px-3 py-2 border rounded-lg"><input type="date" value="${s.targetEndDate||''}" onchange="window.estimatorStories[${idx}].targetEndDate=this.value" class="col-span-2 px-3 py-2 border rounded-lg"><div class="col-span-2 text-center text-sm">MD: ${manDays.toFixed(2)}</div><div class="col-span-1 text-center text-sm">SP: ${storyPoints.toFixed(2)}</div><button onclick="removeStory(${s.id})" class="col-span-1 text-red-600 font-bold">×</button></div>`}).join('');updateSummary()}
+        
+        function updateSummary(){const orgProd=parseFloat(document.getElementById('orgProductivity')?.value)||2,manDaysHours=parseFloat(document.getElementById('manDaysHours')?.value)||8;let totalSP=0,totalMD=0;window.estimatorStories.forEach(s=>{const md=s.hours/manDaysHours,sp=md*orgProd;totalSP+=sp;totalMD+=md});const totalProjMD=totalMD/0.3;if(document.getElementById('totalStoryPoints')){document.getElementById('totalStoryPoints').textContent=totalSP.toFixed(2);document.getElementById('totalManDays').textContent=totalMD.toFixed(2);document.getElementById('totalProjectManDays').textContent=totalProjMD.toFixed(2)}}
+        
+        async function saveFeature(){const name=document.getElementById('featureName').value,orgProd=parseFloat(document.getElementById('orgProductivity').value),mdHours=parseFloat(document.getElementById('manDaysHours').value),startDate=document.getElementById('featureStartDate').value,endDate=document.getElementById('featureEndDate').value;if(!name||!window.estimatorStories.length){alert('Enter name and add stories');return}const dateValid=window.estimatorStories.every(s=>{if(!s.estimatedStartDate||!s.targetEndDate)return true;return (!startDate||s.estimatedStartDate>=startDate)&&(!endDate||s.targetEndDate<=endDate)});if(!dateValid){alert('Story dates must be within feature date range!');return}let totalSP=0,totalMD=0;const stories=[];window.estimatorStories.forEach(s=>{if(s.title&&s.hours>0){const md=s.hours/mdHours,sp=md*orgProd;totalSP+=sp;totalMD+=md;stories.push({title:s.title,hours:s.hours,manDays:md,storyPoints:sp,estimatedStartDate:s.estimatedStartDate,targetEndDate:s.targetEndDate})}});const data={projectId:currentProject.id,name,orgProductivity:orgProd,manDaysHours:mdHours,totalStoryPoints:totalSP,totalManDays:totalMD,estimatedStartDate:startDate,targetEndDate:endDate,stories},method=currentFeature?'PUT':'POST';if(currentFeature)data.id=currentFeature.id;const response=await fetch('api/features.php',{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(response.ok){alert('Saved!');currentFeature=null;await loadFeatures(currentProject.id);currentPage='project';render()}}
+        
+        async function loadProjects(){const response=await fetch('api/projects.php');projects=await response.json();render()}
+        
+        async function loadFeatures(projectId){const response=await fetch(`api/features.php?project_id=${projectId}`);features=await response.json()}
+        
+        async function openProject(projectId){currentProject=projects.find(p=>p.id===projectId);await loadFeatures(projectId);currentPage='project';render()}
+        
+        async function createProject(){const name=prompt('Project name:');if(!name)return;const desc=prompt('Description:');const response=await fetch('api/projects.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,description:desc||''})});if(response.ok)await loadProjects()}
+        
+        async function editProject(projectId){const project=projects.find(p=>p.id===projectId);if(!project)return;const name=prompt('Name:',project.name);if(!name)return;const desc=prompt('Description:',project.description);const response=await fetch('api/projects.php',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:projectId,name,description:desc||''})});if(response.ok)await loadProjects()}
+        
+        async function deleteProject(projectId){if(!confirm('Delete project and all features?'))return;const response=await fetch('api/projects.php',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:projectId})});if(response.ok)await loadProjects()}
+        
+        function createFeature(){currentFeature=null;currentPage='estimator';render()}
+        
+        async function editFeature(featureId){currentFeature=features.find(f=>f.id===featureId);currentPage='estimator';render()}
+        
+        async function deleteFeature(featureId){if(!confirm('Delete feature?'))return;const response=await fetch('api/features.php',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:featureId})});if(response.ok){await loadFeatures(currentProject.id);render()}}
+        
+        
+        function testDREModal() {
+            console.log('=== Testing DRE Modal Visibility ===');
+            const modal = document.getElementById('dreModal');
+            if (!modal) {
+                console.error('Modal not found!');
+                return;
+            }
+            
+            console.log('Modal found:', modal);
+            
+            // Remove hidden class
+            modal.classList.remove('hidden');
+            
+            // Force inline styles
+            modal.style.display = 'flex';
+            modal.style.position = 'fixed';
+            modal.style.top = '0';
+            modal.style.left = '0';
+            modal.style.right = '0';
+            modal.style.bottom = '0';
+            modal.style.zIndex = '99999';
+            modal.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            
+            console.log('Applied styles');
+            console.log('Modal classList:', modal.classList.toString());
+            console.log('Modal style.display:', modal.style.display);
+            console.log('Modal offsetWidth:', modal.offsetWidth);
+            console.log('Modal offsetHeight:', modal.offsetHeight);
+            
+            const computed = window.getComputedStyle(modal);
+            console.log('Computed display:', computed.display);
+            console.log('Computed visibility:', computed.visibility);
+            console.log('Computed opacity:', computed.opacity);
+            
+            alert('Modal should be visible now. Check if you see a dark overlay.');
+        }
+        
+        function showChart(projectId,type){
+    console.log('=== showChart called ===');
+    console.log('projectId:', projectId);
+    console.log('type:', type);
+    
+    const project=projects.find(p=>p.id===projectId);
+    if(!project){
+        console.error('❌ Project not found:', projectId);
+        return;
+    }
+    console.log('✓ Project found:', project.name);
+    
+    let stats,modalId,chartId,prefix;
+    
+    if(type==='productivity'){
+        stats=project.productivityStats;
+        modalId='productivityModal';
+        chartId='productivityChart';
+        prefix='prod';
+    }else if(type==='effortVariance'){
+        stats=project.effortVarianceStats;
+        modalId='effortVarianceModal';
+        chartId='effortChart';
+        prefix='effort';
+    }else if(type==='ontimeIndex'){
+        stats=project.ontimeIndexStats;
+        modalId='ontimeModal';
+        chartId='ontimeChart';
+        prefix='ontime';
+    }else if(type==='dre'){
+        stats=project.dreStats;
+        modalId='dreModal';
+        chartId='dreChart';
+        prefix='dre';
+    }else{
+        console.error('❌ Unknown chart type:', type);
+        return;
+    }
+    
+    console.log('✓ Chart type:', type);
+    console.log('✓ Modal ID:', modalId);
+    console.log('✓ Chart ID:', chartId);
+    console.log('✓ Prefix:', prefix);
+    console.log('✓ Stats:', stats ? 'available' : 'MISSING');
+    
+    if(!stats){
+        console.error('❌ No statistics data available for type:', type);
+        alert('No statistics data available for ' + type);
+        return;
+    }
+    
+    console.log('Opening modal:', modalId);
+    
+    // Close all other modals first to prevent overlap (including import modal)
+    console.log('Closing all other modals first...');
+    const allModalIds = ['productivityModal', 'effortVarianceModal', 'ontimeModal', 'dreModal', 'importModal'];
+    allModalIds.forEach(id => {
+        if (id !== modalId) {
+            const otherModal = document.getElementById(id);
+            if (otherModal) {
+                otherModal.classList.remove('active');
+            }
+        }
+    });
+    console.log('✓ Closed all other modals (including import modal)');
+
+    // Show modal
+    const modal = document.getElementById(modalId);
+    console.log('Modal element:', modal ? 'found' : 'NOT FOUND');
+    if(modal){
+        modal.classList.add('active');
+        console.log('✓ Added active class to modal');
+    }else{
+        console.error('❌ Modal not found in DOM:', modalId);
+        return;
+    }
+    
+    // Set statistics - CHECK EACH ELEMENT FIRST
+    console.log('Setting statistics for prefix:', prefix);
+    
+    const meanEl = document.getElementById(prefix+'Mean');
+    const uclEl = document.getElementById(prefix+'UCL');
+    const lclEl = document.getElementById(prefix+'LCL');
+    const countEl = document.getElementById(prefix+'Count');
+    
+    console.log('Elements check:');
+    console.log('  ' + prefix + 'Mean:', meanEl ? 'found' : 'NOT FOUND');
+    console.log('  ' + prefix + 'UCL:', uclEl ? 'found' : 'NOT FOUND');
+    console.log('  ' + prefix + 'LCL:', lclEl ? 'found' : 'NOT FOUND');
+    console.log('  ' + prefix + 'Count:', countEl ? 'found' : 'NOT FOUND');
+    
+    if(!meanEl || !uclEl || !lclEl || !countEl){
+        console.error('❌ One or more statistic elements not found!');
+        alert('Chart elements not found. Check console for details.');
+        return;
+    }
+    
+    try{
+        meanEl.textContent=stats.mean.toFixed(type==='productivity'?4:2)+(type==='productivity'?'':'%');
+        uclEl.textContent=stats.ucl.toFixed(type==='productivity'?4:2)+(type==='productivity'?'':'%');
+        lclEl.textContent=stats.lcl.toFixed(type==='productivity'?4:2)+(type==='productivity'?'':'%');
+        countEl.textContent=type==='dre'?stats.featureCount:stats.features.length;
+        console.log('✓ Set statistics values');
+    }catch(e){
+        console.error('❌ Error setting statistics:', e);
+        return;
+    }
+    
+    // Prepare chart data
+    let chartFeatures,labels,values;
+    
+    if(type==='dre'){
+        chartFeatures=stats.features.filter(f=>(f.sitDefects+f.uatDefects)>0);
+        labels=chartFeatures.map(f=>f.name);
+        values=chartFeatures.map(f=>f.defectRemovalEfficiency);
+        console.log('DRE features with defects:', chartFeatures.length);
+    }else{
+        chartFeatures=stats.features;
+        labels=chartFeatures.map(f=>f.name);
+        if(type==='productivity'){
+            values=chartFeatures.map(f=>f.productivity);
+        }else if(type==='effortVariance'){
+            values=chartFeatures.map(f=>f.effortVariance);
+        }else if(type==='ontimeIndex'){
+            values=chartFeatures.map(f=>f.ontimeIndex);
+        }
+        console.log('Chart features:', chartFeatures.length);
+    }
+    
+    if(values.length===0){
+        console.warn('⚠ No data available for chart');
+        alert('No data available for chart');
+        if(type==='dre'){
+            document.getElementById(modalId).classList.add('hidden');
+        }else{
+            document.getElementById(modalId).classList.remove('active');
+        }
+        return;
+    }
+    
+    console.log('Chart data points:', values.length);
+    
+    const meanLine=new Array(values.length).fill(stats.mean);
+    const uclLine=new Array(values.length).fill(stats.ucl);
+    const lclLine=new Array(values.length).fill(stats.lcl);
+    
+    // Check if chart canvas exists
+    const canvas = document.getElementById(chartId);
+    console.log('Canvas element (' + chartId + '):', canvas ? 'found' : 'NOT FOUND');
+    
+    if(!canvas){
+        console.error('❌ Chart canvas not found:', chartId);
+        alert('Chart canvas not found. Check console for details.');
+        return;
+    }
+    
+    // Destroy existing chart
+    if(charts[chartId]){
+        charts[chartId].destroy();
+        console.log('✓ Destroyed existing chart');
+    }
+    
+    // Create new chart
+    try{
+        const ctx=canvas.getContext('2d');
+        charts[chartId]=new Chart(ctx,{
+            type:'line',
+            data:{
+                labels:labels,
+                datasets:[
+                    {
+                        label:'Feature '+type,
+                        data:values,
+                        borderColor:'rgb(59,130,246)',
+                        borderWidth:3,
+                        pointRadius:6
+                    },
+                    {
+                        label:'Mean',
+                        data:meanLine,
+                        borderColor:'rgb(34,197,94)',
+                        borderDash:[5,5],
+                        pointRadius:0
+                    },
+                    {
+                        label:'UCL',
+                        data:uclLine,
+                        borderColor:'rgb(239,68,68)',
+                        borderDash:[10,5],
+                        pointRadius:0
+                    },
+                    {
+                        label:'LCL',
+                        data:lclLine,
+                        borderColor:'rgb(34,197,94)',
+                        borderDash:[10,5],
+                        pointRadius:0
+                    }
+                ]
+            },
+            options:{
+                responsive:true,
+                plugins:{
+                    title:{
+                        display:true,
+                        text:project.name+' - '+type+' Chart'
+                    }
+                },
+                scales:{
+                    y:{
+                        beginAtZero:true
+                    }
+                }
+            }
+        });
+        console.log('✓ Created new chart successfully');
+        console.log('=== showChart completed ===');
+    }catch(e){
+        console.error('❌ Error creating chart:', e);
+    }
+}
+        function closeChartModal(id){
+            document.getElementById(id).classList.remove('active');
+            // Find and destroy the chart inside this modal
+            const chartId = id.replace('Modal', 'Chart').replace('dreModal', 'dreChart').replace('ontimeModal', 'ontimeChart').replace('effortVarianceModal', 'effortChart').replace('productivityModal', 'productivityChart');
+            if(charts[chartId]){
+                charts[chartId].destroy();
+            }
+        }
+
+        
+        // ===== Excel Import Functions =====
+        function openImportModal() {
+            // Close any open chart modals first
+            const chartModalIds = ['productivityModal', 'effortVarianceModal', 'ontimeModal', 'dreModal'];
+            chartModalIds.forEach(id => {
+                const modal = document.getElementById(id);
+                if (modal) {
+                    modal.classList.remove('active');
+                }
+            });
+
+            // Open import modal
+            document.getElementById('importModal').classList.add('active');
+            document.getElementById('importResult').classList.add('hidden');
+            document.getElementById('importProgress').classList.add('hidden');
+            document.getElementById('importFile').value = '';
+        }
+        
+        function closeImportModal() {
+            document.getElementById('importModal').classList.remove('active');
+        }
+        
+        function downloadBasicTemplate() {
+            const h = ['Project Name','Project Description','Feature Name','Org Productivity','Man Days Hours','Feature Start Date','Feature End Date','SIT Defects','UAT Defects','Story Title','Story Hours (Est)'];
+            const d = [
+                ['E-Commerce','Online shop','User Auth','2','8','2025-01-10','2025-02-15','','','Login page','16'],
+                ['E-Commerce','Online shop','User Auth','2','8','2025-01-10','2025-02-15','','','Registration','24'],
+                ['E-Commerce','Online shop','Product List','2','8','2025-02-01','2025-03-15','','','List products','20'],
+                ['Mobile App','Customer app','Dashboard','1.8','8','2025-01-20','2025-02-28','','','Home screen','12'],
+                ['','','','','','','','','','','']
+            ];
+            downloadCSV(h, d, 'sprint_estimator_basic_template.csv');
+        }
+        
+        function downloadCompleteTemplate() {
+            const h = ['Project Name','Project Description','Feature Name','Org Productivity','Man Days Hours','Feature Start Date','Feature End Date','SIT Defects','UAT Defects','Story Title','Story Hours (Est)','Story Start Date (Est)','Story End Date (Est)','Is Completed','Story Hours (Actual)','Story Start Date (Actual)','Story End Date (Actual)','Actual Requirements MD','Actual Design MD','Actual Testing MD','Actual PM MD'];
+            const d = [
+                ['E-Commerce','Online shop','User Auth','2','8','2025-01-10','2025-02-15','18','2','Login page','16','2025-01-10','2025-01-15','TRUE','18','2025-01-11','2025-01-16','3.5','2.8','4.2','2.5'],
+                ['E-Commerce','Online shop','User Auth','2','8','2025-01-10','2025-02-15','18','2','Registration','24','2025-01-16','2025-01-22','TRUE','26','2025-01-17','2025-01-24','','','',''],
+                ['E-Commerce','Online shop','Product List','2','8','2025-02-01','2025-03-15','15','5','List products','20','2025-02-01','2025-02-08','TRUE','22','2025-02-02','2025-02-09','2.8','3.2','5.5','3.0'],
+                ['Mobile App','Customer app','Dashboard','1.8','8','2025-01-20','2025-02-28','12','3','Home screen','12','2025-01-20','2025-01-24','TRUE','14','2025-01-21','2025-01-25','2.2','1.8','3.5','2.0'],
+                ['','','','','','','','','','','','','','','','','','','','','']
+            ];
+            downloadCSV(h, d, 'sprint_estimator_complete_template.csv');
+        }
+        
+        function downloadCSV(headers, data, filename) {
+            let csv = headers.join(',') + '\n';
+            data.forEach(row => csv += row.join(',') + '\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+        
+        async function uploadFile() {
+            const fileInput = document.getElementById('importFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file first');
+                return;
+            }
+            
+            if (!file.name.endsWith('.csv')) {
+                alert('Please upload CSV file. Save Excel as CSV first.');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            document.getElementById('importProgress').classList.remove('hidden');
+            document.getElementById('importResult').classList.add('hidden');
+            
+            try {
+                const response = await fetch('api/import.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                document.getElementById('importProgress').classList.add('hidden');
+                
+                if (response.ok && result.success) {
+                    let msg = `
+                        <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <h3 class="font-bold text-green-800 mb-3">✅ Import Successful!</h3>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div class="bg-white p-3 rounded">
+                                    <p class="font-semibold text-blue-700 mb-2">📁 Projects</p>
+                                    <p class="text-green-600">+ Created: ${result.stats.projectsCreated}</p>
+                                    <p class="text-orange-600">↻ Updated: ${result.stats.projectsUpdated}</p>
+                                </div>
+                                <div class="bg-white p-3 rounded">
+                                    <p class="font-semibold text-purple-700 mb-2">📋 Features</p>
+                                    <p class="text-green-600">+ Created: ${result.stats.featuresCreated}</p>
+                                    <p class="text-orange-600">↻ Updated: ${result.stats.featuresUpdated}</p>
+                                </div>
+                                <div class="bg-white p-3 rounded">
+                                    <p class="font-semibold text-indigo-700 mb-2">📝 Stories</p>
+                                    <p class="text-green-600">+ Created: ${result.stats.storiesCreated}</p>
+                                    <p class="text-orange-600">↻ Updated: ${result.stats.storiesUpdated}</p>
+                                </div>`;
+                    
+                    if (result.stats.productivityDataCreated > 0 || result.stats.productivityDataUpdated > 0) {
+                        msg += `<div class="bg-white p-3 rounded">
+                                    <p class="font-semibold text-green-700 mb-2">📊 Productivity</p>
+                                    <p class="text-green-600">+ Created: ${result.stats.productivityDataCreated}</p>
+                                    <p class="text-orange-600">↻ Updated: ${result.stats.productivityDataUpdated}</p>
+                                </div>`;
+                    }
+                    
+                    msg += `</ul>
+                            <button onclick="closeImportModal(); loadProjects();" class="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                View Projects
+                            </button>
+                        </div>`;
+                    
+                    document.getElementById('importResult').innerHTML = msg;
+                    document.getElementById('importResult').classList.remove('hidden');
+                } else {
+                    document.getElementById('importResult').innerHTML = `
+                        <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+                            <h3 class="font-bold text-red-800 mb-2">❌ Import Failed</h3>
+                            <p class="text-sm text-red-700">${result.error || 'Unknown error'}</p>
+                        </div>`;
+                    document.getElementById('importResult').classList.remove('hidden');
+                }
+            } catch (error) {
+                document.getElementById('importProgress').classList.add('hidden');
+                document.getElementById('importResult').innerHTML = `
+                    <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <h3 class="font-bold text-red-800 mb-2">❌ Error</h3>
+                        <p class="text-sm text-red-700">${error.message}</p>
+                    </div>`;
+                document.getElementById('importResult').classList.remove('hidden');
+            }
+        }
+      
+    </script>
+</body>
+</html>
