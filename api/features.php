@@ -8,7 +8,7 @@ try {
     if ($method === 'GET' && isset($_GET['project_id'])) {
         $project_id = (int)$_GET['project_id'];
         
-        $stmt = $db->prepare("SELECT * FROM features WHERE project_id = ? ORDER BY created_at DESC");
+        $stmt = $db->prepare("SELECT * FROM features WHERE project_id = ? ORDER BY target_end_date DESC, created_at DESC");
         $stmt->bind_param('i', $project_id);
         $stmt->execute();
         $result = $stmt->get_result();

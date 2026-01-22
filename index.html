@@ -385,6 +385,15 @@
     }
     console.log('✓ Project found:', project.name);
     
+    // Get current filter period for chart title
+    const filterDates = getFilterDates(currentFilter);
+    let filterPeriodText = '';
+    if (filterDates) {
+        filterPeriodText = ` (${filterDates.start} to ${filterDates.end})`;
+    } else {
+        filterPeriodText = ' (All Time)';
+    }
+    
     let stats,modalId,chartId,prefix;
     
     if(type==='productivity'){
@@ -535,7 +544,7 @@
         console.log('✓ Destroyed existing chart');
     }
     
-    // Create new chart
+    // Create new chart with filter period in title
     try{
         const ctx=canvas.getContext('2d');
         charts[chartId]=new Chart(ctx,{
@@ -578,7 +587,19 @@
                 plugins:{
                     title:{
                         display:true,
-                        text:project.name+' - '+type+' Chart'
+                        text:project.name+' - '+type+' Chart'+filterPeriodText,
+                        font: {
+                            size: 16,
+                            weight: 'bold'
+                        }
+                    },
+                    subtitle: {
+                        display: filterDates ? true : false,
+                        text: filterDates ? `Filter Period: ${filterDates.start} to ${filterDates.end}` : '',
+                        font: {
+                            size: 12
+                        },
+                        color: '#6B7280'
                     }
                 },
                 scales:{
