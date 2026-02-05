@@ -13,6 +13,8 @@
         .modal.active { display: flex; }
         .modal-content { background: white; padding: 20px; border-radius: 10px; max-width: 90%; max-height: 90%; overflow: auto; }
         .filter-active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: white !important; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); transform: scale(1.05); }
+        .date-picker-modal { display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .date-picker-modal.active { display: flex; }
     </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
@@ -70,8 +72,41 @@
             </div>
         </div>
     </div>
-    
 
+    <!-- Custom Date Picker Modal -->
+    <div id="customDateModal" class="date-picker-modal">
+        <div class="modal-content max-w-md">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">📆 Select Custom Date Range</h2>
+                <button onclick="closeCustomDatePicker()" class="text-2xl hover:text-red-600">&times;</button>
+            </div>
+            
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Start Date</label>
+                    <input type="date" id="customStartDate" class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold mb-2">End Date</label>
+                    <input type="date" id="customEndDate" class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none">
+                </div>
+            </div>
+            
+            <div class="flex gap-3">
+                <button onclick="applyCustomDateFilter()" class="flex-1 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold">
+                    Apply Filter
+                </button>
+                <button onclick="closeCustomDatePicker()" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+                    Cancel
+                </button>
+            </div>
+            
+            <div class="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-gray-600">
+                <p><strong>Tip:</strong> The filter will show features whose target end date falls within your selected range.</p>
+            </div>
+        </div>
+    </div>
     
     <!-- Modals for Charts -->
     <div id="productivityModal" class="modal"><div class="modal-content w-full max-w-6xl"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Productivity Chart</h2><button onclick="closeChartModal('productivityModal')" class="text-2xl">&times;</button></div><canvas id="productivityChart"></canvas><div class="mt-4 grid grid-cols-4 gap-4"><div class="bg-blue-50 p-4 rounded"><p class="text-sm font-semibold">Mean</p><p class="text-2xl font-bold" id="prodMean">0</p></div><div class="bg-red-50 p-4 rounded"><p class="text-sm font-semibold">UCL</p><p class="text-2xl font-bold" id="prodUCL">0</p></div><div class="bg-green-50 p-4 rounded"><p class="text-sm font-semibold">LCL</p><p class="text-2xl font-bold" id="prodLCL">0</p></div><div class="bg-purple-50 p-4 rounded"><p class="text-sm font-semibold">Features</p><p class="text-2xl font-bold" id="prodCount">0</p></div></div></div></div>
@@ -111,12 +146,25 @@
 
     <script>
         let currentPage='dashboard',projects=[],currentProject=null,features=[],currentFeature=null,charts={};
-        let currentFilter = null; // null, '3months', '6months', '12months'
+        let currentFilter = null; // null, '3months', '6months', '12months', 'custom'
+        let customStartDate = null;
+        let customEndDate = null;
         
         loadProjects();
         
         function getFilterDates(filterType) {
             if (!filterType) return null;
+            
+            // Handle custom date range
+            if (filterType === 'custom') {
+                if (customStartDate && customEndDate) {
+                    return {
+                        start: customStartDate,
+                        end: customEndDate
+                    };
+                }
+                return null;
+            }
             
             const now = new Date();
             const currentYear = now.getFullYear();
@@ -149,13 +197,52 @@
             loadProjects();
         }
         
+        function openCustomDatePicker() {
+            document.getElementById('customDateModal').classList.add('active');
+            
+            // Set default values if custom dates exist
+            if (customStartDate) {
+                document.getElementById('customStartDate').value = customStartDate;
+            }
+            if (customEndDate) {
+                document.getElementById('customEndDate').value = customEndDate;
+            }
+        }
+        
+        function closeCustomDatePicker() {
+            document.getElementById('customDateModal').classList.remove('active');
+        }
+        
+        function applyCustomDateFilter() {
+            const startDate = document.getElementById('customStartDate').value;
+            const endDate = document.getElementById('customEndDate').value;
+            
+            if (!startDate || !endDate) {
+                alert('Please select both start and end dates');
+                return;
+            }
+            
+            if (startDate > endDate) {
+                alert('Start date must be before end date');
+                return;
+            }
+            
+            customStartDate = startDate;
+            customEndDate = endDate;
+            currentFilter = 'custom';
+            
+            closeCustomDatePicker();
+            loadProjects();
+        }
+        
         function render(){currentPage==='dashboard'?renderDashboard():currentPage==='project'?renderProjectView():currentPage==='estimator'?renderEstimator():renderProductivityTracker()}
         
         function renderDashboard() {
             const filterInfo = currentFilter ? getFilterDates(currentFilter) : null;
             const filterLabel = currentFilter === '3months' ? 'Last 3 Months' : 
                                currentFilter === '6months' ? 'Last 6 Months' : 
-                               currentFilter === '12months' ? 'Last 12 Months' : 'All Time';
+                               currentFilter === '12months' ? 'Last 12 Months' :
+                               currentFilter === 'custom' ? 'Custom Range' : 'All Time';
             
             document.getElementById('app').innerHTML=`
                 <div class="container mx-auto p-6">
@@ -178,7 +265,7 @@
                                         'Showing all data'}
                                 </p>
                             </div>
-                            <div class="flex gap-3">
+                            <div class="flex gap-3 flex-wrap">
                                 <button onclick="setFilter('3months')" class="px-6 py-3 rounded-lg border-2 border-indigo-200 hover:bg-indigo-50 transition ${currentFilter === '3months' ? 'filter-active' : 'bg-white'}">
                                     Last 3 Months
                                 </button>
@@ -188,7 +275,10 @@
                                 <button onclick="setFilter('12months')" class="px-6 py-3 rounded-lg border-2 border-indigo-200 hover:bg-indigo-50 transition ${currentFilter === '12months' ? 'filter-active' : 'bg-white'}">
                                     Last 12 Months
                                 </button>
-                                <button onclick="setFilter(null)" class="px-6 py-3 rounded-lg border-2 border-gray-200 hover:bg-gray-50 transition ${!currentFilter ? 'bg-gray-100 font-semibold' : 'bg-white'}">
+                                <button onclick="openCustomDatePicker()" class="px-6 py-3 rounded-lg border-2 border-purple-200 hover:bg-purple-50 transition ${currentFilter === 'custom' ? 'filter-active' : 'bg-white'}">
+                                    📆 Custom Range
+                                </button>
+                                <button onclick="setFilter(null); customStartDate=null; customEndDate=null;" class="px-6 py-3 rounded-lg border-2 border-gray-200 hover:bg-gray-50 transition ${!currentFilter ? 'bg-gray-100 font-semibold' : 'bg-white'}">
                                     🔄 Reset
                                 </button>
                             </div>
@@ -344,286 +434,249 @@
         
         async function deleteFeature(featureId){if(!confirm('Delete feature?'))return;const response=await fetch('api/features.php',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:featureId})});if(response.ok){await loadFeatures(currentProject.id);render()}}
         
-        
-        function testDREModal() {
-            console.log('=== Testing DRE Modal Visibility ===');
-            const modal = document.getElementById('dreModal');
-            if (!modal) {
-                console.error('Modal not found!');
+        function showChart(projectId,type){
+            console.log('=== showChart called ===');
+            console.log('projectId:', projectId);
+            console.log('type:', type);
+            
+            const project=projects.find(p=>p.id===projectId);
+            if(!project){
+                console.error('❌ Project not found:', projectId);
+                return;
+            }
+            console.log('✓ Project found:', project.name);
+            
+            // Get current filter period for chart title
+            const filterDates = getFilterDates(currentFilter);
+            let filterPeriodText = '';
+            if (filterDates) {
+                filterPeriodText = ` (${filterDates.start} to ${filterDates.end})`;
+            } else {
+                filterPeriodText = ' (All Time)';
+            }
+            
+            let stats,modalId,chartId,prefix;
+            
+            if(type==='productivity'){
+                stats=project.productivityStats;
+                modalId='productivityModal';
+                chartId='productivityChart';
+                prefix='prod';
+            }else if(type==='effortVariance'){
+                stats=project.effortVarianceStats;
+                modalId='effortVarianceModal';
+                chartId='effortChart';
+                prefix='effort';
+            }else if(type==='ontimeIndex'){
+                stats=project.ontimeIndexStats;
+                modalId='ontimeModal';
+                chartId='ontimeChart';
+                prefix='ontime';
+            }else if(type==='dre'){
+                stats=project.dreStats;
+                modalId='dreModal';
+                chartId='dreChart';
+                prefix='dre';
+            }else{
+                console.error('❌ Unknown chart type:', type);
                 return;
             }
             
-            console.log('Modal found:', modal);
+            console.log('✓ Chart type:', type);
+            console.log('✓ Modal ID:', modalId);
+            console.log('✓ Chart ID:', chartId);
+            console.log('✓ Prefix:', prefix);
+            console.log('✓ Stats:', stats ? 'available' : 'MISSING');
             
-            // Remove hidden class
-            modal.classList.remove('hidden');
-            
-            // Force inline styles
-            modal.style.display = 'flex';
-            modal.style.position = 'fixed';
-            modal.style.top = '0';
-            modal.style.left = '0';
-            modal.style.right = '0';
-            modal.style.bottom = '0';
-            modal.style.zIndex = '99999';
-            modal.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-            
-            console.log('Applied styles');
-            console.log('Modal classList:', modal.classList.toString());
-            console.log('Modal style.display:', modal.style.display);
-            console.log('Modal offsetWidth:', modal.offsetWidth);
-            console.log('Modal offsetHeight:', modal.offsetHeight);
-            
-            const computed = window.getComputedStyle(modal);
-            console.log('Computed display:', computed.display);
-            console.log('Computed visibility:', computed.visibility);
-            console.log('Computed opacity:', computed.opacity);
-            
-            alert('Modal should be visible now. Check if you see a dark overlay.');
-        }
-        
-        function showChart(projectId,type){
-    console.log('=== showChart called ===');
-    console.log('projectId:', projectId);
-    console.log('type:', type);
-    
-    const project=projects.find(p=>p.id===projectId);
-    if(!project){
-        console.error('❌ Project not found:', projectId);
-        return;
-    }
-    console.log('✓ Project found:', project.name);
-    
-    // Get current filter period for chart title
-    const filterDates = getFilterDates(currentFilter);
-    let filterPeriodText = '';
-    if (filterDates) {
-        filterPeriodText = ` (${filterDates.start} to ${filterDates.end})`;
-    } else {
-        filterPeriodText = ' (All Time)';
-    }
-    
-    let stats,modalId,chartId,prefix;
-    
-    if(type==='productivity'){
-        stats=project.productivityStats;
-        modalId='productivityModal';
-        chartId='productivityChart';
-        prefix='prod';
-    }else if(type==='effortVariance'){
-        stats=project.effortVarianceStats;
-        modalId='effortVarianceModal';
-        chartId='effortChart';
-        prefix='effort';
-    }else if(type==='ontimeIndex'){
-        stats=project.ontimeIndexStats;
-        modalId='ontimeModal';
-        chartId='ontimeChart';
-        prefix='ontime';
-    }else if(type==='dre'){
-        stats=project.dreStats;
-        modalId='dreModal';
-        chartId='dreChart';
-        prefix='dre';
-    }else{
-        console.error('❌ Unknown chart type:', type);
-        return;
-    }
-    
-    console.log('✓ Chart type:', type);
-    console.log('✓ Modal ID:', modalId);
-    console.log('✓ Chart ID:', chartId);
-    console.log('✓ Prefix:', prefix);
-    console.log('✓ Stats:', stats ? 'available' : 'MISSING');
-    
-    if(!stats){
-        console.error('❌ No statistics data available for type:', type);
-        alert('No statistics data available for ' + type);
-        return;
-    }
-    
-    console.log('Opening modal:', modalId);
-    
-    // Close all other modals first to prevent overlap (including import modal)
-    console.log('Closing all other modals first...');
-    const allModalIds = ['productivityModal', 'effortVarianceModal', 'ontimeModal', 'dreModal', 'importModal'];
-    allModalIds.forEach(id => {
-        if (id !== modalId) {
-            const otherModal = document.getElementById(id);
-            if (otherModal) {
-                otherModal.classList.remove('active');
+            if(!stats){
+                console.error('❌ No statistics data available for type:', type);
+                alert('No statistics data available for ' + type);
+                return;
             }
-        }
-    });
-    console.log('✓ Closed all other modals (including import modal)');
-
-    // Show modal
-    const modal = document.getElementById(modalId);
-    console.log('Modal element:', modal ? 'found' : 'NOT FOUND');
-    if(modal){
-        modal.classList.add('active');
-        console.log('✓ Added active class to modal');
-    }else{
-        console.error('❌ Modal not found in DOM:', modalId);
-        return;
-    }
-    
-    // Set statistics - CHECK EACH ELEMENT FIRST
-    console.log('Setting statistics for prefix:', prefix);
-    
-    const meanEl = document.getElementById(prefix+'Mean');
-    const uclEl = document.getElementById(prefix+'UCL');
-    const lclEl = document.getElementById(prefix+'LCL');
-    const countEl = document.getElementById(prefix+'Count');
-    
-    console.log('Elements check:');
-    console.log('  ' + prefix + 'Mean:', meanEl ? 'found' : 'NOT FOUND');
-    console.log('  ' + prefix + 'UCL:', uclEl ? 'found' : 'NOT FOUND');
-    console.log('  ' + prefix + 'LCL:', lclEl ? 'found' : 'NOT FOUND');
-    console.log('  ' + prefix + 'Count:', countEl ? 'found' : 'NOT FOUND');
-    
-    if(!meanEl || !uclEl || !lclEl || !countEl){
-        console.error('❌ One or more statistic elements not found!');
-        alert('Chart elements not found. Check console for details.');
-        return;
-    }
-    
-    try{
-        meanEl.textContent=stats.mean.toFixed(type==='productivity'?4:2)+(type==='productivity'?'':'%');
-        uclEl.textContent=stats.ucl.toFixed(type==='productivity'?4:2)+(type==='productivity'?'':'%');
-        lclEl.textContent=stats.lcl.toFixed(type==='productivity'?4:2)+(type==='productivity'?'':'%');
-        countEl.textContent=type==='dre'?stats.featureCount:stats.features.length;
-        console.log('✓ Set statistics values');
-    }catch(e){
-        console.error('❌ Error setting statistics:', e);
-        return;
-    }
-    
-    // Prepare chart data
-    let chartFeatures,labels,values;
-    
-    if(type==='dre'){
-        chartFeatures=stats.features.filter(f=>(f.sitDefects+f.uatDefects)>0);
-        labels=chartFeatures.map(f=>f.name);
-        values=chartFeatures.map(f=>f.defectRemovalEfficiency);
-        console.log('DRE features with defects:', chartFeatures.length);
-    }else{
-        chartFeatures=stats.features;
-        labels=chartFeatures.map(f=>f.name);
-        if(type==='productivity'){
-            values=chartFeatures.map(f=>f.productivity);
-        }else if(type==='effortVariance'){
-            values=chartFeatures.map(f=>f.effortVariance);
-        }else if(type==='ontimeIndex'){
-            values=chartFeatures.map(f=>f.ontimeIndex);
-        }
-        console.log('Chart features:', chartFeatures.length);
-    }
-    
-    if(values.length===0){
-        console.warn('⚠ No data available for chart');
-        alert('No data available for chart');
-        if(type==='dre'){
-            document.getElementById(modalId).classList.add('hidden');
-        }else{
-            document.getElementById(modalId).classList.remove('active');
-        }
-        return;
-    }
-    
-    console.log('Chart data points:', values.length);
-    
-    const meanLine=new Array(values.length).fill(stats.mean);
-    const uclLine=new Array(values.length).fill(stats.ucl);
-    const lclLine=new Array(values.length).fill(stats.lcl);
-    
-    // Check if chart canvas exists
-    const canvas = document.getElementById(chartId);
-    console.log('Canvas element (' + chartId + '):', canvas ? 'found' : 'NOT FOUND');
-    
-    if(!canvas){
-        console.error('❌ Chart canvas not found:', chartId);
-        alert('Chart canvas not found. Check console for details.');
-        return;
-    }
-    
-    // Destroy existing chart
-    if(charts[chartId]){
-        charts[chartId].destroy();
-        console.log('✓ Destroyed existing chart');
-    }
-    
-    // Create new chart with filter period in title
-    try{
-        const ctx=canvas.getContext('2d');
-        charts[chartId]=new Chart(ctx,{
-            type:'line',
-            data:{
-                labels:labels,
-                datasets:[
-                    {
-                        label:'Feature '+type,
-                        data:values,
-                        borderColor:'rgb(59,130,246)',
-                        borderWidth:3,
-                        pointRadius:6
-                    },
-                    {
-                        label:'Mean',
-                        data:meanLine,
-                        borderColor:'rgb(34,197,94)',
-                        borderDash:[5,5],
-                        pointRadius:0
-                    },
-                    {
-                        label:'UCL',
-                        data:uclLine,
-                        borderColor:'rgb(239,68,68)',
-                        borderDash:[10,5],
-                        pointRadius:0
-                    },
-                    {
-                        label:'LCL',
-                        data:lclLine,
-                        borderColor:'rgb(34,197,94)',
-                        borderDash:[10,5],
-                        pointRadius:0
-                    }
-                ]
-            },
-            options:{
-                responsive:true,
-                plugins:{
-                    title:{
-                        display:true,
-                        text:project.name+' - '+type+' Chart'+filterPeriodText,
-                        font: {
-                            size: 16,
-                            weight: 'bold'
-                        }
-                    },
-                    subtitle: {
-                        display: filterDates ? true : false,
-                        text: filterDates ? `Filter Period: ${filterDates.start} to ${filterDates.end}` : '',
-                        font: {
-                            size: 12
-                        },
-                        color: '#6B7280'
-                    }
-                },
-                scales:{
-                    y:{
-                        beginAtZero:true
+            
+            console.log('Opening modal:', modalId);
+            
+            // Close all other modals first to prevent overlap (including import modal)
+            console.log('Closing all other modals first...');
+            const allModalIds = ['productivityModal', 'effortVarianceModal', 'ontimeModal', 'dreModal', 'importModal', 'customDateModal'];
+            allModalIds.forEach(id => {
+                if (id !== modalId) {
+                    const otherModal = document.getElementById(id);
+                    if (otherModal) {
+                        otherModal.classList.remove('active');
                     }
                 }
+            });
+            console.log('✓ Closed all other modals (including import modal)');
+
+            // Show modal
+            const modal = document.getElementById(modalId);
+            console.log('Modal element:', modal ? 'found' : 'NOT FOUND');
+            if(modal){
+                modal.classList.add('active');
+                console.log('✓ Added active class to modal');
+            }else{
+                console.error('❌ Modal not found in DOM:', modalId);
+                return;
             }
-        });
-        console.log('✓ Created new chart successfully');
-        console.log('=== showChart completed ===');
-    }catch(e){
-        console.error('❌ Error creating chart:', e);
-    }
-}
+            
+            // Set statistics - CHECK EACH ELEMENT FIRST
+            console.log('Setting statistics for prefix:', prefix);
+            
+            const meanEl = document.getElementById(prefix+'Mean');
+            const uclEl = document.getElementById(prefix+'UCL');
+            const lclEl = document.getElementById(prefix+'LCL');
+            const countEl = document.getElementById(prefix+'Count');
+            
+            console.log('Elements check:');
+            console.log('  ' + prefix + 'Mean:', meanEl ? 'found' : 'NOT FOUND');
+            console.log('  ' + prefix + 'UCL:', uclEl ? 'found' : 'NOT FOUND');
+            console.log('  ' + prefix + 'LCL:', lclEl ? 'found' : 'NOT FOUND');
+            console.log('  ' + prefix + 'Count:', countEl ? 'found' : 'NOT FOUND');
+            
+            if(!meanEl || !uclEl || !lclEl || !countEl){
+                console.error('❌ One or more statistic elements not found!');
+                alert('Chart elements not found. Check console for details.');
+                return;
+            }
+            
+            try{
+                meanEl.textContent=stats.mean.toFixed(type==='productivity'?4:2)+(type==='productivity'?'':'%');
+                uclEl.textContent=stats.ucl.toFixed(type==='productivity'?4:2)+(type==='productivity'?'':'%');
+                lclEl.textContent=stats.lcl.toFixed(type==='productivity'?4:2)+(type==='productivity'?'':'%');
+                countEl.textContent=type==='dre'?stats.featureCount:stats.features.length;
+                console.log('✓ Set statistics values');
+            }catch(e){
+                console.error('❌ Error setting statistics:', e);
+                return;
+            }
+            
+            // Prepare chart data
+            let chartFeatures,labels,values;
+            
+            if(type==='dre'){
+                chartFeatures=stats.features.filter(f=>(f.sitDefects+f.uatDefects)>0);
+                labels=chartFeatures.map(f=>f.name);
+                values=chartFeatures.map(f=>f.defectRemovalEfficiency);
+                console.log('DRE features with defects:', chartFeatures.length);
+            }else{
+                chartFeatures=stats.features;
+                labels=chartFeatures.map(f=>f.name);
+                if(type==='productivity'){
+                    values=chartFeatures.map(f=>f.productivity);
+                }else if(type==='effortVariance'){
+                    values=chartFeatures.map(f=>f.effortVariance);
+                }else if(type==='ontimeIndex'){
+                    values=chartFeatures.map(f=>f.ontimeIndex);
+                }
+                console.log('Chart features:', chartFeatures.length);
+            }
+            
+            if(values.length===0){
+                console.warn('⚠ No data available for chart');
+                alert('No data available for chart');
+                if(type==='dre'){
+                    document.getElementById(modalId).classList.add('hidden');
+                }else{
+                    document.getElementById(modalId).classList.remove('active');
+                }
+                return;
+            }
+            
+            console.log('Chart data points:', values.length);
+            
+            const meanLine=new Array(values.length).fill(stats.mean);
+            const uclLine=new Array(values.length).fill(stats.ucl);
+            const lclLine=new Array(values.length).fill(stats.lcl);
+            
+            // Check if chart canvas exists
+            const canvas = document.getElementById(chartId);
+            console.log('Canvas element (' + chartId + '):', canvas ? 'found' : 'NOT FOUND');
+            
+            if(!canvas){
+                console.error('❌ Chart canvas not found:', chartId);
+                alert('Chart canvas not found. Check console for details.');
+                return;
+            }
+            
+            // Destroy existing chart
+            if(charts[chartId]){
+                charts[chartId].destroy();
+                console.log('✓ Destroyed existing chart');
+            }
+            
+            // Create new chart with filter period in title
+            try{
+                const ctx=canvas.getContext('2d');
+                charts[chartId]=new Chart(ctx,{
+                    type:'line',
+                    data:{
+                        labels:labels,
+                        datasets:[
+                            {
+                                label:'Feature '+type,
+                                data:values,
+                                borderColor:'rgb(59,130,246)',
+                                borderWidth:3,
+                                pointRadius:6
+                            },
+                            {
+                                label:'Mean',
+                                data:meanLine,
+                                borderColor:'rgb(34,197,94)',
+                                borderDash:[5,5],
+                                pointRadius:0
+                            },
+                            {
+                                label:'UCL',
+                                data:uclLine,
+                                borderColor:'rgb(239,68,68)',
+                                borderDash:[10,5],
+                                pointRadius:0
+                            },
+                            {
+                                label:'LCL',
+                                data:lclLine,
+                                borderColor:'rgb(34,197,94)',
+                                borderDash:[10,5],
+                                pointRadius:0
+                            }
+                        ]
+                    },
+                    options:{
+                        responsive:true,
+                        plugins:{
+                            title:{
+                                display:true,
+                                text:project.name+' - '+type+' Chart'+filterPeriodText,
+                                font: {
+                                    size: 16,
+                                    weight: 'bold'
+                                }
+                            },
+                            subtitle: {
+                                display: filterDates ? true : false,
+                                text: filterDates ? `Filter Period: ${filterDates.start} to ${filterDates.end}` : '',
+                                font: {
+                                    size: 12
+                                },
+                                color: '#6B7280'
+                            }
+                        },
+                        scales:{
+                            y:{
+                                beginAtZero:true
+                            }
+                        }
+                    }
+                });
+                console.log('✓ Created new chart successfully');
+                console.log('=== showChart completed ===');
+            }catch(e){
+                console.error('❌ Error creating chart:', e);
+            }
+        }
+        
         function closeChartModal(id){
             document.getElementById(id).classList.remove('active');
             // Find and destroy the chart inside this modal
@@ -637,7 +690,7 @@
         // ===== Excel Import Functions =====
         function openImportModal() {
             // Close any open chart modals first
-            const chartModalIds = ['productivityModal', 'effortVarianceModal', 'ontimeModal', 'dreModal'];
+            const chartModalIds = ['productivityModal', 'effortVarianceModal', 'ontimeModal', 'dreModal', 'customDateModal'];
             chartModalIds.forEach(id => {
                 const modal = document.getElementById(id);
                 if (modal) {
