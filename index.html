@@ -109,11 +109,11 @@
     </div>
     
     <!-- Modals for Charts -->
-    <div id="productivityModal" class="modal"><div class="modal-content w-full max-w-6xl"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Productivity Chart</h2><button onclick="closeChartModal('productivityModal')" class="text-2xl">&times;</button></div><canvas id="productivityChart"></canvas><div class="mt-4 grid grid-cols-4 gap-4"><div class="bg-blue-50 p-4 rounded"><p class="text-sm font-semibold">Mean</p><p class="text-2xl font-bold" id="prodMean">0</p></div><div class="bg-red-50 p-4 rounded"><p class="text-sm font-semibold">UCL</p><p class="text-2xl font-bold" id="prodUCL">0</p></div><div class="bg-green-50 p-4 rounded"><p class="text-sm font-semibold">LCL</p><p class="text-2xl font-bold" id="prodLCL">0</p></div><div class="bg-purple-50 p-4 rounded"><p class="text-sm font-semibold">Features</p><p class="text-2xl font-bold" id="prodCount">0</p></div></div></div></div>
+    <div id="productivityModal" class="modal"><div class="modal-content w-full max-w-6xl"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Productivity Chart</h2><button onclick="closeChartModal('productivityModal')" class="text-2xl">&times;</button></div><canvas id="productivityChart"></canvas><div class="mt-4 grid grid-cols-5 gap-4"><div class="bg-blue-50 p-4 rounded"><p class="text-sm font-semibold">Mean</p><p class="text-2xl font-bold" id="prodMean">0</p></div><div class="bg-red-50 p-4 rounded"><p class="text-sm font-semibold">UCL</p><p class="text-2xl font-bold" id="prodUCL">0</p></div><div class="bg-green-50 p-4 rounded"><p class="text-sm font-semibold">LCL</p><p class="text-2xl font-bold" id="prodLCL">0</p></div><div class="bg-yellow-50 p-4 rounded"><p class="text-sm font-semibold">Std Dev</p><p class="text-2xl font-bold" id="prodSD">0</p></div><div class="bg-purple-50 p-4 rounded"><p class="text-sm font-semibold">Features</p><p class="text-2xl font-bold" id="prodCount">0</p></div></div></div></div>
     
-    <div id="effortVarianceModal" class="modal"><div class="modal-content w-full max-w-6xl"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Effort Variance Chart</h2><button onclick="closeChartModal('effortVarianceModal')" class="text-2xl">&times;</button></div><canvas id="effortChart"></canvas><div class="mt-4 grid grid-cols-4 gap-4"><div class="bg-blue-50 p-4 rounded"><p class="text-sm font-semibold">Mean</p><p class="text-2xl font-bold" id="effortMean">0</p></div><div class="bg-red-50 p-4 rounded"><p class="text-sm font-semibold">UCL</p><p class="text-2xl font-bold" id="effortUCL">0</p></div><div class="bg-green-50 p-4 rounded"><p class="text-sm font-semibold">LCL</p><p class="text-2xl font-bold" id="effortLCL">0</p></div><div class="bg-purple-50 p-4 rounded"><p class="text-sm font-semibold">Features</p><p class="text-2xl font-bold" id="effortCount">0</p></div></div></div></div>
+    <div id="effortVarianceModal" class="modal"><div class="modal-content w-full max-w-6xl"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Effort Variance Chart</h2><button onclick="closeChartModal('effortVarianceModal')" class="text-2xl">&times;</button></div><canvas id="effortChart"></canvas><div class="mt-4 grid grid-cols-5 gap-4"><div class="bg-blue-50 p-4 rounded"><p class="text-sm font-semibold">Mean</p><p class="text-2xl font-bold" id="effortMean">0</p></div><div class="bg-red-50 p-4 rounded"><p class="text-sm font-semibold">UCL</p><p class="text-2xl font-bold" id="effortUCL">0</p></div><div class="bg-green-50 p-4 rounded"><p class="text-sm font-semibold">LCL</p><p class="text-2xl font-bold" id="effortLCL">0</p></div><div class="bg-yellow-50 p-4 rounded"><p class="text-sm font-semibold">Std Dev</p><p class="text-2xl font-bold" id="effortSD">0</p></div><div class="bg-purple-50 p-4 rounded"><p class="text-sm font-semibold">Features</p><p class="text-2xl font-bold" id="effortCount">0</p></div></div></div></div>
     
-    <div id="ontimeModal" class="modal"><div class="modal-content w-full max-w-6xl"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Ontime Index Chart</h2><button onclick="closeChartModal('ontimeModal')" class="text-2xl">&times;</button></div><canvas id="ontimeChart"></canvas><div class="mt-4 grid grid-cols-4 gap-4"><div class="bg-blue-50 p-4 rounded"><p class="text-sm font-semibold">Mean</p><p class="text-2xl font-bold" id="ontimeMean">0</p></div><div class="bg-red-50 p-4 rounded"><p class="text-sm font-semibold">UCL</p><p class="text-2xl font-bold" id="ontimeUCL">0</p></div><div class="bg-green-50 p-4 rounded"><p class="text-sm font-semibold">LCL</p><p class="text-2xl font-bold" id="ontimeLCL">0</p></div><div class="bg-purple-50 p-4 rounded"><p class="text-sm font-semibold">Features</p><p class="text-2xl font-bold" id="ontimeCount">0</p></div></div></div></div>
+    <div id="ontimeModal" class="modal"><div class="modal-content w-full max-w-6xl"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Ontime Index Chart</h2><button onclick="closeChartModal('ontimeModal')" class="text-2xl">&times;</button></div><canvas id="ontimeChart"></canvas><div class="mt-4 grid grid-cols-5 gap-4"><div class="bg-blue-50 p-4 rounded"><p class="text-sm font-semibold">Mean</p><p class="text-2xl font-bold" id="ontimeMean">0</p></div><div class="bg-red-50 p-4 rounded"><p class="text-sm font-semibold">UCL</p><p class="text-2xl font-bold" id="ontimeUCL">0</p></div><div class="bg-green-50 p-4 rounded"><p class="text-sm font-semibold">LCL</p><p class="text-2xl font-bold" id="ontimeLCL">0</p></div><div class="bg-yellow-50 p-4 rounded"><p class="text-sm font-semibold">Std Dev</p><p class="text-2xl font-bold" id="ontimeSD">0</p></div><div class="bg-purple-50 p-4 rounded"><p class="text-sm font-semibold">Features</p><p class="text-2xl font-bold" id="ontimeCount">0</p></div></div></div></div>
 
     <!-- DRE Modal -->
     <div id="dreModal" class="modal">
@@ -122,7 +122,7 @@
                 <h2 class="text-2xl font-bold">Mean Defect Removal Efficiency Chart</h2>
                 <button onclick="closeChartModal('dreModal')" class="text-2xl">&times;</button>
             </div>
-            <div class="grid grid-cols-4 gap-4 mb-6">
+            <div class="grid grid-cols-5 gap-4 mb-6">
                 <div class="bg-purple-50 p-4 rounded-lg text-center">
                     <p class="text-sm text-gray-600">Mean DRE</p>
                     <p class="text-2xl font-bold text-purple-700" id="dreMean">0</p>
@@ -134,6 +134,10 @@
                 <div class="bg-green-50 p-4 rounded-lg text-center">
                     <p class="text-sm text-gray-600">LCL</p>
                     <p class="text-2xl font-bold text-green-700" id="dreLCL">0</p>
+                </div>
+                <div class="bg-yellow-50 p-4 rounded-lg text-center">
+                    <p class="text-sm text-gray-600">Std Dev</p>
+                    <p class="text-2xl font-bold text-yellow-700" id="dreSD">0</p>
                 </div>
                 <div class="bg-gray-50 p-4 rounded-lg text-center">
                     <p class="text-sm text-gray-600">Features</p>
@@ -526,15 +530,17 @@
             const meanEl = document.getElementById(prefix+'Mean');
             const uclEl = document.getElementById(prefix+'UCL');
             const lclEl = document.getElementById(prefix+'LCL');
+            const sdEl = document.getElementById(prefix+'SD');
             const countEl = document.getElementById(prefix+'Count');
             
             console.log('Elements check:');
             console.log('  ' + prefix + 'Mean:', meanEl ? 'found' : 'NOT FOUND');
             console.log('  ' + prefix + 'UCL:', uclEl ? 'found' : 'NOT FOUND');
             console.log('  ' + prefix + 'LCL:', lclEl ? 'found' : 'NOT FOUND');
+            console.log('  ' + prefix + 'SD:', sdEl ? 'found' : 'NOT FOUND');
             console.log('  ' + prefix + 'Count:', countEl ? 'found' : 'NOT FOUND');
             
-            if(!meanEl || !uclEl || !lclEl || !countEl){
+            if(!meanEl || !uclEl || !lclEl || !sdEl || !countEl){
                 console.error('❌ One or more statistic elements not found!');
                 alert('Chart elements not found. Check console for details.');
                 return;
@@ -544,8 +550,9 @@
                 meanEl.textContent=stats.mean.toFixed(type==='productivity'?4:2)+(type==='productivity'?'':'%');
                 uclEl.textContent=stats.ucl.toFixed(type==='productivity'?4:2)+(type==='productivity'?'':'%');
                 lclEl.textContent=stats.lcl.toFixed(type==='productivity'?4:2)+(type==='productivity'?'':'%');
+                sdEl.textContent=stats.stdDev.toFixed(type==='productivity'?4:2)+(type==='productivity'?'':'%');
                 countEl.textContent=type==='dre'?stats.featureCount:stats.features.length;
-                console.log('✓ Set statistics values');
+                console.log('✓ Set statistics values (including SD)');
             }catch(e){
                 console.error('❌ Error setting statistics:', e);
                 return;
