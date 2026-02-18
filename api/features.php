@@ -233,21 +233,64 @@ try {
                 $stmt->execute();
                 $stmt->close();
                 
-                // Insert updated stories
-                foreach ($data['stories'] as $story) {
-                    $stmt = $db->prepare("INSERT INTO user_stories (feature_id, title, hours, man_days, story_points, estimated_start_date, target_end_date) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                    $stmt->bind_param('isdddss',
-                        $data['id'],
-                        $story['title'],
-                        $story['hours'],
-                        $story['manDays'],
-                        $story['storyPoints'],
-                        $story['estimatedStartDate'],
-                        $story['targetEndDate']
-                    );
-                    $stmt->execute();
-                    $stmt->close();
-                }
+                // Fetch current story IDs in DB for this feature
+$stmt = $db->prepare("SELECT id FROM user_stories WHERE feature_id = ?");
+$stmt->bind_param('i', $data['id']);
+$stmt->execute();
+$existingRows = $stmt->get_result();
+$existingIds = [];
+while ($row = $existingRows->fetch_assoc()) {
+    $existingIds[] = (int)$row['id'];
+}
+$stmt->close();
+
+$keptIds = [];
+
+foreach ($data['stories'] as $story) {
+    $storyId = isset($story['id']) ? (int)$story['id'] : 0;
+
+    if ($storyId && in_array($storyId, $existingIds)) {
+        // UPDATE existing story — preserves story_id so productivity_data stays intact
+        $stmt = $db->prepare("UPDATE user_stories SET title = ?, hours = ?, man_days = ?, story_points = ?, estimated_start_date = ?, target_end_date = ? WHERE id = ?");
+        $stmt->bind_param('sdddssi',
+            $story['title'],
+            $story['hours'],
+            $story['manDays'],
+            $story['storyPoints'],
+            $story['estimatedStartDate'],
+            $story['targetEndDate'],
+            $storyId
+        );
+        $stmt->execute();
+        $stmt->close();
+        $keptIds[] = $storyId;
+    } else {
+        // INSERT new story (no prior productivity data to preserve)
+        $stmt = $db->prepare("INSERT INTO user_stories (feature_id, title, hours, man_days, story_points, estimated_start_date, target_end_date) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param('isdddss',
+            $data['id'],
+            $story['title'],
+            $story['hours'],
+            $story['manDays'],
+            $story['storyPoints'],
+            $story['estimatedStartDate'],
+            $story['targetEndDate']
+        );
+        $stmt->execute();
+        $keptIds[] = $db->insert_id;
+        $stmt->close();
+    }
+}
+
+// DELETE only stories that were explicitly removed in the editor
+foreach ($existingIds as $oldId) {
+    if (!in_array($oldId, $keptIds)) {
+        $stmt = $db->prepare("DELETE FROM user_stories WHERE id = ?");
+        $stmt->bind_param('i', $oldId);
+        $stmt->execute();
+        $stmt->close();
+    }
+}
             }
             
             $db->commit();
