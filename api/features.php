@@ -227,12 +227,6 @@ try {
                 $stmt->execute();
                 $stmt->close();
                 
-                // Delete old stories
-                $stmt = $db->prepare("DELETE FROM user_stories WHERE feature_id = ?");
-                $stmt->bind_param('i', $data['id']);
-                $stmt->execute();
-                $stmt->close();
-                
                 // Fetch current story IDs in DB for this feature
 $stmt = $db->prepare("SELECT id FROM user_stories WHERE feature_id = ?");
 $stmt->bind_param('i', $data['id']);
