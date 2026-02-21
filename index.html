@@ -109,46 +109,392 @@
     </div>
     
     <!-- Modals for Charts -->
-    <div id="productivityModal" class="modal"><div class="modal-content w-full max-w-6xl"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Productivity Chart</h2><button onclick="closeChartModal('productivityModal')" class="text-2xl">&times;</button></div><canvas id="productivityChart"></canvas><div class="mt-4 grid grid-cols-5 gap-4"><div class="bg-blue-50 p-4 rounded"><p class="text-sm font-semibold">Mean</p><p class="text-2xl font-bold" id="prodMean">0</p></div><div class="bg-red-50 p-4 rounded"><p class="text-sm font-semibold">UCL</p><p class="text-2xl font-bold" id="prodUCL">0</p></div><div class="bg-green-50 p-4 rounded"><p class="text-sm font-semibold">LCL</p><p class="text-2xl font-bold" id="prodLCL">0</p></div><div class="bg-yellow-50 p-4 rounded"><p class="text-sm font-semibold">Std Dev</p><p class="text-2xl font-bold" id="prodSD">0</p></div><div class="bg-purple-50 p-4 rounded"><p class="text-sm font-semibold">Features</p><p class="text-2xl font-bold" id="prodCount">0</p></div></div></div></div>
-    
-    <div id="effortVarianceModal" class="modal"><div class="modal-content w-full max-w-6xl"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Effort Variance Chart</h2><button onclick="closeChartModal('effortVarianceModal')" class="text-2xl">&times;</button></div><canvas id="effortChart"></canvas><div class="mt-4 grid grid-cols-5 gap-4"><div class="bg-blue-50 p-4 rounded"><p class="text-sm font-semibold">Mean</p><p class="text-2xl font-bold" id="effortMean">0</p></div><div class="bg-red-50 p-4 rounded"><p class="text-sm font-semibold">UCL</p><p class="text-2xl font-bold" id="effortUCL">0</p></div><div class="bg-green-50 p-4 rounded"><p class="text-sm font-semibold">LCL</p><p class="text-2xl font-bold" id="effortLCL">0</p></div><div class="bg-yellow-50 p-4 rounded"><p class="text-sm font-semibold">Std Dev</p><p class="text-2xl font-bold" id="effortSD">0</p></div><div class="bg-purple-50 p-4 rounded"><p class="text-sm font-semibold">Features</p><p class="text-2xl font-bold" id="effortCount">0</p></div></div></div></div>
-    
-    <div id="ontimeModal" class="modal"><div class="modal-content w-full max-w-6xl"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Ontime Index Chart</h2><button onclick="closeChartModal('ontimeModal')" class="text-2xl">&times;</button></div><canvas id="ontimeChart"></canvas><div class="mt-4 grid grid-cols-5 gap-4"><div class="bg-blue-50 p-4 rounded"><p class="text-sm font-semibold">Mean</p><p class="text-2xl font-bold" id="ontimeMean">0</p></div><div class="bg-red-50 p-4 rounded"><p class="text-sm font-semibold">UCL</p><p class="text-2xl font-bold" id="ontimeUCL">0</p></div><div class="bg-green-50 p-4 rounded"><p class="text-sm font-semibold">LCL</p><p class="text-2xl font-bold" id="ontimeLCL">0</p></div><div class="bg-yellow-50 p-4 rounded"><p class="text-sm font-semibold">Std Dev</p><p class="text-2xl font-bold" id="ontimeSD">0</p></div><div class="bg-purple-50 p-4 rounded"><p class="text-sm font-semibold">Features</p><p class="text-2xl font-bold" id="ontimeCount">0</p></div></div></div></div>
+    <!-- ===================================================================
+     UPDATED CHART MODALS WITH TARGET AND ALERT COLUMNS
+     Replace the existing chart modals in index.html with these
+     =================================================================== -->
 
-    <!-- DRE Modal -->
-    <div id="dreModal" class="modal">
-        <div class="modal-content w-full max-w-6xl">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold">Mean Defect Removal Efficiency Chart</h2>
-                <button onclick="closeChartModal('dreModal')" class="text-2xl">&times;</button>
+<!-- Productivity Modal - WITH TARGET & ALERT -->
+<div id="productivityModal" class="modal">
+    <div class="modal-content w-full max-w-6xl">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">Productivity Chart</h2>
+            <button onclick="closeChartModal('productivityModal')" class="text-2xl">&times;</button>
+        </div>
+        <canvas id="productivityChart"></canvas>
+        <div class="mt-4 grid grid-cols-6 gap-4">
+            <div class="bg-blue-50 p-4 rounded">
+                <p class="text-sm font-semibold">Mean</p>
+                <p class="text-2xl font-bold" id="prodMean">0</p>
             </div>
-            <div class="grid grid-cols-5 gap-4 mb-6">
-                <div class="bg-purple-50 p-4 rounded-lg text-center">
-                    <p class="text-sm text-gray-600">Mean DRE</p>
-                    <p class="text-2xl font-bold text-purple-700" id="dreMean">0</p>
-                </div>
-                <div class="bg-red-50 p-4 rounded-lg text-center">
-                    <p class="text-sm text-gray-600">UCL</p>
-                    <p class="text-2xl font-bold text-red-700" id="dreUCL">0</p>
-                </div>
-                <div class="bg-green-50 p-4 rounded-lg text-center">
-                    <p class="text-sm text-gray-600">LCL</p>
-                    <p class="text-2xl font-bold text-green-700" id="dreLCL">0</p>
-                </div>
-                <div class="bg-yellow-50 p-4 rounded-lg text-center">
-                    <p class="text-sm text-gray-600">Std Dev</p>
-                    <p class="text-2xl font-bold text-yellow-700" id="dreSD">0</p>
-                </div>
-                <div class="bg-gray-50 p-4 rounded-lg text-center">
-                    <p class="text-sm text-gray-600">Features</p>
-                    <p class="text-2xl font-bold text-gray-700" id="dreCount">0</p>
-                </div>
+            <div class="bg-red-50 p-4 rounded">
+                <p class="text-sm font-semibold">UCL</p>
+                <p class="text-2xl font-bold" id="prodUCL">0</p>
             </div>
-            <canvas id="dreChart"></canvas>
+            <div class="bg-green-50 p-4 rounded">
+                <p class="text-sm font-semibold">LCL</p>
+                <p class="text-2xl font-bold" id="prodLCL">0</p>
+            </div>
+            <div class="bg-yellow-50 p-4 rounded">
+                <p class="text-sm font-semibold">Std Dev</p>
+                <p class="text-2xl font-bold" id="prodSD">0</p>
+            </div>
+            <div class="bg-indigo-50 p-4 rounded">
+                <p class="text-sm font-semibold">Target</p>
+                <p class="text-xl font-bold" id="prodTarget">-</p>
+            </div>
+            <div class="p-4 rounded" id="prodAlertBox">
+                <p class="text-sm font-semibold">Alert</p>
+                <p class="text-3xl text-center" id="prodAlert">-</p>
+            </div>
+        </div>
+        <div class="mt-4 p-3 bg-gray-50 rounded text-sm">
+            <p class="font-semibold mb-1">Features Count: <span id="prodCount">0</span></p>
+            <p class="text-gray-600" id="prodAlertDesc">-</p>
         </div>
     </div>
+</div>
+
+<!-- Effort Variance Modal - WITH TARGET & ALERT -->
+<div id="effortVarianceModal" class="modal">
+    <div class="modal-content w-full max-w-6xl">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">Effort Variance Chart</h2>
+            <button onclick="closeChartModal('effortVarianceModal')" class="text-2xl">&times;</button>
+        </div>
+        <canvas id="effortChart"></canvas>
+        <div class="mt-4 grid grid-cols-6 gap-4">
+            <div class="bg-blue-50 p-4 rounded">
+                <p class="text-sm font-semibold">Mean</p>
+                <p class="text-2xl font-bold" id="effortMean">0</p>
+            </div>
+            <div class="bg-red-50 p-4 rounded">
+                <p class="text-sm font-semibold">UCL</p>
+                <p class="text-2xl font-bold" id="effortUCL">0</p>
+            </div>
+            <div class="bg-green-50 p-4 rounded">
+                <p class="text-sm font-semibold">LCL</p>
+                <p class="text-2xl font-bold" id="effortLCL">0</p>
+            </div>
+            <div class="bg-yellow-50 p-4 rounded">
+                <p class="text-sm font-semibold">Std Dev</p>
+                <p class="text-2xl font-bold" id="effortSD">0</p>
+            </div>
+            <div class="bg-indigo-50 p-4 rounded">
+                <p class="text-sm font-semibold">Target</p>
+                <p class="text-xl font-bold" id="effortTarget">-</p>
+            </div>
+            <div class="p-4 rounded" id="effortAlertBox">
+                <p class="text-sm font-semibold">Alert</p>
+                <p class="text-3xl text-center" id="effortAlert">-</p>
+            </div>
+        </div>
+        <div class="mt-4 p-3 bg-gray-50 rounded text-sm">
+            <p class="font-semibold mb-1">Features Count: <span id="effortCount">0</span></p>
+            <p class="text-gray-600" id="effortAlertDesc">-</p>
+        </div>
+    </div>
+</div>
+
+<!-- Ontime Index Modal - WITH TARGET & ALERT -->
+<div id="ontimeModal" class="modal">
+    <div class="modal-content w-full max-w-6xl">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">Ontime Index Chart</h2>
+            <button onclick="closeChartModal('ontimeModal')" class="text-2xl">&times;</button>
+        </div>
+        <canvas id="ontimeChart"></canvas>
+        <div class="mt-4 grid grid-cols-6 gap-4">
+            <div class="bg-blue-50 p-4 rounded">
+                <p class="text-sm font-semibold">Mean</p>
+                <p class="text-2xl font-bold" id="ontimeMean">0</p>
+            </div>
+            <div class="bg-red-50 p-4 rounded">
+                <p class="text-sm font-semibold">UCL</p>
+                <p class="text-2xl font-bold" id="ontimeUCL">0</p>
+            </div>
+            <div class="bg-green-50 p-4 rounded">
+                <p class="text-sm font-semibold">LCL</p>
+                <p class="text-2xl font-bold" id="ontimeLCL">0</p>
+            </div>
+            <div class="bg-yellow-50 p-4 rounded">
+                <p class="text-sm font-semibold">Std Dev</p>
+                <p class="text-2xl font-bold" id="ontimeSD">0</p>
+            </div>
+            <div class="bg-indigo-50 p-4 rounded">
+                <p class="text-sm font-semibold">Target</p>
+                <p class="text-xl font-bold" id="ontimeTarget">-</p>
+            </div>
+            <div class="p-4 rounded" id="ontimeAlertBox">
+                <p class="text-sm font-semibold">Alert</p>
+                <p class="text-3xl text-center" id="ontimeAlert">-</p>
+            </div>
+        </div>
+        <div class="mt-4 p-3 bg-gray-50 rounded text-sm">
+            <p class="font-semibold mb-1">Features Count: <span id="ontimeCount">0</span></p>
+            <p class="text-gray-600" id="ontimeAlertDesc">-</p>
+        </div>
+    </div>
+</div>
+
+<!-- DRE Modal - WITH TARGET & ALERT -->
+<div id="dreModal" class="modal">
+    <div class="modal-content w-full max-w-6xl">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">Mean Defect Removal Efficiency Chart</h2>
+            <button onclick="closeChartModal('dreModal')" class="text-2xl">&times;</button>
+        </div>
+        <div class="grid grid-cols-6 gap-4 mb-6">
+            <div class="bg-purple-50 p-4 rounded-lg text-center">
+                <p class="text-sm text-gray-600">Mean DRE</p>
+                <p class="text-2xl font-bold text-purple-700" id="dreMean">0</p>
+            </div>
+            <div class="bg-red-50 p-4 rounded-lg text-center">
+                <p class="text-sm text-gray-600">UCL</p>
+                <p class="text-2xl font-bold text-red-700" id="dreUCL">0</p>
+            </div>
+            <div class="bg-green-50 p-4 rounded-lg text-center">
+                <p class="text-sm text-gray-600">LCL</p>
+                <p class="text-2xl font-bold text-green-700" id="dreLCL">0</p>
+            </div>
+            <div class="bg-yellow-50 p-4 rounded-lg text-center">
+                <p class="text-sm text-gray-600">Std Dev</p>
+                <p class="text-2xl font-bold text-yellow-700" id="dreSD">0</p>
+            </div>
+            <div class="bg-indigo-50 p-4 rounded-lg text-center">
+                <p class="text-sm text-gray-600">Target</p>
+                <p class="text-xl font-bold text-indigo-700" id="dreTarget">-</p>
+            </div>
+            <div class="p-4 rounded-lg text-center" id="dreAlertBox">
+                <p class="text-sm text-gray-600">Alert</p>
+                <p class="text-3xl" id="dreAlert">-</p>
+            </div>
+        </div>
+        <canvas id="dreChart"></canvas>
+        <div class="mt-4 p-3 bg-gray-50 rounded text-sm">
+            <p class="font-semibold mb-1">Features Count: <span id="dreCount">0</span></p>
+            <p class="text-gray-600" id="dreAlertDesc">-</p>
+        </div>
+    </div>
+</div>
+
 
     <script>
+    // ===================================================================
+// KPI TARGET AND ALERT HELPER FUNCTIONS
+// Add these functions to your JavaScript in index.html
+// ===================================================================
+
+/**
+ * Get expected KPI target for a given metric type
+ * @param {string} type - 'productivity', 'effortVariance', 'ontimeIndex', or 'dre'
+ * @returns {object} Target configuration with value, operator, and label
+ */
+function getKPITarget(type) {
+    const targets = {
+        'productivity': { 
+            value: 1.15, 
+            operator: '>', 
+            label: '> 1.15',
+            description: 'Higher is better'
+        },
+        'effortVariance': { 
+            value: 10.5, 
+            operator: '<', 
+            label: '< 10.5%',
+            description: 'Lower is better'
+        },
+        'ontimeIndex': { 
+            value: 90, 
+            operator: '>', 
+            label: '> 90%',
+            description: 'Higher is better'
+        },
+        'dre': { 
+            value: 89, 
+            operator: '>', 
+            label: '> 89%',
+            description: 'Higher is better'
+        }
+    };
+    return targets[type] || { value: 0, operator: '>', label: 'N/A' };
+}
+
+/**
+ * Calculate alert status based on control chart rules (1-SIGMA VERSION)
+ * @param {number} mean - The mean value
+ * @param {number} ucl - Upper Control Limit (Mean + 3*SD)
+ * @param {number} lcl - Lower Control Limit (Mean - 3*SD)
+ * @param {number} stdDev - Standard Deviation
+ * @returns {object} Alert object with level, color, emoji, and CSS classes
+ */
+function getAlertStatus(mean, ucl, lcl, stdDev) {
+    // RED: Beyond 3-sigma limits (UCL/LCL)
+    // This indicates the process is out of statistical control
+    if (mean > ucl || mean < lcl) {
+        return { 
+            level: 'RED', 
+            color: 'red', 
+            emoji: '🔴', 
+            bgClass: 'bg-red-50', 
+            textClass: 'text-red-700',
+            borderClass: 'border-red-300',
+            description: 'Out of Control',
+            zone: 'Beyond 3σ'
+        };
+    }
+    
+    // Calculate centerline and 1-sigma limits
+    const centerline = (ucl + lcl) / 2;
+    const oneSigmaUpper = centerline + stdDev;
+    const oneSigmaLower = centerline - stdDev;
+    
+    // YELLOW: Outside ±1-sigma but inside ±3-sigma (warning zone)
+    // Process is still in control but showing increased variation
+    if (mean > oneSigmaUpper || mean < oneSigmaLower) {
+        return { 
+            level: 'YELLOW', 
+            color: 'yellow', 
+            emoji: '🟡', 
+            bgClass: 'bg-yellow-50', 
+            textClass: 'text-yellow-700',
+            borderClass: 'border-yellow-300',
+            description: 'Warning - Above 1σ Limit',
+            zone: 'Between 1σ and 3σ'
+        };
+    }
+    
+    // GREEN: Within ±1-sigma (normal process variation)
+    // Process is very stable with minimal variation
+    return { 
+        level: 'GREEN', 
+        color: 'green', 
+        emoji: '🟢', 
+        bgClass: 'bg-green-50', 
+        textClass: 'text-green-700',
+        borderClass: 'border-green-300',
+        description: 'In Control - Stable',
+        zone: 'Within ±1σ'
+    };
+}
+
+/**
+ * Check if the KPI target is met
+ * @param {number} value - The actual value to check
+ * @param {object} target - Target object from getKPITarget()
+ * @returns {boolean} True if target is met, false otherwise
+ */
+function isTargetMet(value, target) {
+    if (target.operator === '>') {
+        return value > target.value;
+    } else if (target.operator === '<') {
+        return value < target.value;
+    } else if (target.operator === '>=') {
+        return value >= target.value;
+    } else if (target.operator === '<=') {
+        return value <= target.value;
+    }
+    return false;
+}
+
+/**
+ * Get combined status (both target and alert)
+ * @param {number} value - The actual value
+ * @param {number} ucl - Upper Control Limit
+ * @param {number} lcl - Lower Control Limit
+ * @param {number} stdDev - Standard Deviation
+ * @param {string} type - Metric type
+ * @returns {object} Combined status with target and alert info
+ */
+function getCombinedStatus(value, ucl, lcl, stdDev, type) {
+    const target = getKPITarget(type);
+    const alert = getAlertStatus(value, ucl, lcl, stdDev);
+    const targetMet = isTargetMet(value, target);
+    
+    return {
+        target: target,
+        targetMet: targetMet,
+        alert: alert,
+        // Overall status: Good if both target met AND green alert
+        overallGood: targetMet && alert.level === 'GREEN'
+    };
+}
+
+/**
+ * Format metric value with appropriate decimal places
+ * @param {number} value - The value to format
+ * @param {string} type - Metric type
+ * @returns {string} Formatted value
+ */
+function formatMetricValue(value, type) {
+    if (type === 'productivity') {
+        return value.toFixed(4);
+    } else {
+        return value.toFixed(2) + '%';
+    }
+}
+
+/**
+ * Get sigma zone information for a given value
+ * @param {number} value - The value to check
+ * @param {number} centerline - Process centerline
+ * @param {number} stdDev - Standard Deviation
+ * @returns {object} Zone information
+ */
+function getSigmaZone(value, centerline, stdDev) {
+    const deviation = Math.abs(value - centerline);
+    const sigmas = deviation / stdDev;
+    
+    // Within ±1σ (GREEN zone)
+    if (sigmas <= 1) {
+        return { 
+            zone: 'Within ±1σ', 
+            sigmaValue: sigmas.toFixed(2),
+            color: 'green',
+            bgClass: 'bg-green-50',
+            textClass: 'text-green-700',
+            stability: '🟢 Very Stable',
+            description: 'Process is performing with minimal variation'
+        };
+    } 
+    // Between 1σ and 2σ (YELLOW zone - lower warning)
+    else if (sigmas <= 2) {
+        return { 
+            zone: 'Between 1σ-2σ', 
+            sigmaValue: sigmas.toFixed(2),
+            color: 'yellow',
+            bgClass: 'bg-yellow-50',
+            textClass: 'text-yellow-700',
+            stability: '🟡 Warning',
+            description: 'Increased variation detected - investigate causes'
+        };
+    } 
+    // Between 2σ and 3σ (YELLOW zone - higher warning)
+    else if (sigmas <= 3) {
+        return { 
+            zone: 'Between 2σ-3σ', 
+            sigmaValue: sigmas.toFixed(2),
+            color: 'orange',
+            bgClass: 'bg-orange-50',
+            textClass: 'text-orange-700',
+            stability: '🟡 High Warning',
+            description: 'Approaching control limits - take action soon'
+        };
+    } 
+    // Beyond ±3σ (RED zone - out of control)
+    else {
+        return { 
+            zone: 'Beyond ±3σ', 
+            sigmaValue: sigmas.toFixed(2),
+            color: 'red',
+            bgClass: 'bg-red-50',
+            textClass: 'text-red-700',
+            stability: '🔴 Out of Control',
+            description: 'Special cause variation - immediate action required'
+        };
+    }
+}
+
         let currentPage='dashboard',projects=[],currentProject=null,features=[],currentFeature=null,charts={};
         let currentFilter = null; // null, '3months', '6months', '12months', 'custom'
         let customStartDate = null;
@@ -314,27 +660,85 @@
                                     </div>
                                 </div>
                                 ${p.avgProductivity>0?`
-                                    <div class="grid grid-cols-1 gap-2 mb-4">
-                                        <div class="bg-green-50 p-3 rounded cursor-pointer hover:bg-green-100" onclick="showChart(${p.id},'productivity')">
-                                            <p class="text-xs text-green-600 font-semibold">Mean Productivity (Click)</p>
-                                            <p class="text-2xl font-bold">${p.avgProductivity.toFixed(4)}</p>
-                                        </div>
-                                        <div class="bg-orange-50 p-3 rounded cursor-pointer hover:bg-orange-100" onclick="showChart(${p.id},'effortVariance')">
-                                            <p class="text-xs text-orange-600 font-semibold">Mean Effort Variance (Click)</p>
-                                            <p class="text-2xl font-bold">${p.avgEffortVariance.toFixed(2)}%</p>
-                                        </div>
-                                        <div class="bg-cyan-50 p-3 rounded cursor-pointer hover:bg-cyan-100" onclick="showChart(${p.id},'ontimeIndex')">
-                                            <p class="text-xs text-cyan-600 font-semibold">Mean Ontime Index (Click)</p>
-                                            <p class="text-2xl font-bold">${p.avgOntimeIndex.toFixed(2)}%</p>
-                                        </div>
-                                    </div>
-                                `:''}
-                                ${p.avgDefectRemovalEfficiency!==undefined && p.dreStats && p.dreStats.featureCount>0?`
-                                    <div class="bg-purple-50 p-3 rounded cursor-pointer hover:bg-purple-100 mb-4" onclick="showChart(${p.id},'dre')">
-                                        <p class="text-xs text-purple-600 font-semibold">Mean DRE (Click)</p>
-                                        <p class="text-2xl font-bold">${p.avgDefectRemovalEfficiency.toFixed(2)}%</p>
-                                    </div>
-                                `:''}
+    <div class="grid grid-cols-1 gap-2 mb-4">
+        <div class="bg-green-50 p-3 rounded cursor-pointer hover:bg-green-100 transition" onclick="showChart(${p.id},'productivity')">
+            <p class="text-xs text-green-600 font-semibold">Mean Productivity (Click for Chart)</p>
+            <p class="text-2xl font-bold">${p.avgProductivity.toFixed(4)}</p>
+            ${(() => {
+                const target = getKPITarget('productivity');
+                const met = isTargetMet(p.avgProductivity, target);
+                const alert = getAlertStatus(p.avgProductivity, p.productivityStats.ucl, p.productivityStats.lcl, p.productivityStats.stdDev);
+                return `<div class="flex items-center justify-between mt-2">
+                    <p class="text-xs ${met ? 'text-green-600' : 'text-red-600'} font-semibold">
+                        Target: ${target.label} ${met ? '✓' : '✗'}
+                    </p>
+                    <div class="flex items-center gap-1">
+                        <span class="text-lg">${alert.emoji}</span>
+                        <span class="text-xs ${alert.textClass} font-semibold">${alert.level}</span>
+                    </div>
+                </div>`;
+            })()}
+        </div>
+        
+        <div class="bg-orange-50 p-3 rounded cursor-pointer hover:bg-orange-100 transition" onclick="showChart(${p.id},'effortVariance')">
+            <p class="text-xs text-orange-600 font-semibold">Mean Effort Variance (Click for Chart)</p>
+            <p class="text-2xl font-bold">${p.avgEffortVariance.toFixed(2)}%</p>
+            ${(() => {
+                const target = getKPITarget('effortVariance');
+                const met = isTargetMet(p.avgEffortVariance, target);
+                const alert = getAlertStatus(p.avgEffortVariance, p.effortVarianceStats.ucl, p.effortVarianceStats.lcl, p.effortVarianceStats.stdDev);
+                return `<div class="flex items-center justify-between mt-2">
+                    <p class="text-xs ${met ? 'text-green-600' : 'text-red-600'} font-semibold">
+                        Target: ${target.label} ${met ? '✓' : '✗'}
+                    </p>
+                    <div class="flex items-center gap-1">
+                        <span class="text-lg">${alert.emoji}</span>
+                        <span class="text-xs ${alert.textClass} font-semibold">${alert.level}</span>
+                    </div>
+                </div>`;
+            })()}
+        </div>
+        
+        <div class="bg-cyan-50 p-3 rounded cursor-pointer hover:bg-cyan-100 transition" onclick="showChart(${p.id},'ontimeIndex')">
+            <p class="text-xs text-cyan-600 font-semibold">Mean Ontime Index (Click for Chart)</p>
+            <p class="text-2xl font-bold">${p.avgOntimeIndex.toFixed(2)}%</p>
+            ${(() => {
+                const target = getKPITarget('ontimeIndex');
+                const met = isTargetMet(p.avgOntimeIndex, target);
+                const alert = getAlertStatus(p.avgOntimeIndex, p.ontimeIndexStats.ucl, p.ontimeIndexStats.lcl, p.ontimeIndexStats.stdDev);
+                return `<div class="flex items-center justify-between mt-2">
+                    <p class="text-xs ${met ? 'text-green-600' : 'text-red-600'} font-semibold">
+                        Target: ${target.label} ${met ? '✓' : '✗'}
+                    </p>
+                    <div class="flex items-center gap-1">
+                        <span class="text-lg">${alert.emoji}</span>
+                        <span class="text-xs ${alert.textClass} font-semibold">${alert.level}</span>
+                    </div>
+                </div>`;
+            })()}
+        </div>
+    </div>
+`:''}
+${p.avgDefectRemovalEfficiency!==undefined && p.dreStats && p.dreStats.featureCount>0?`
+    <div class="bg-purple-50 p-3 rounded cursor-pointer hover:bg-purple-100 mb-4 transition" onclick="showChart(${p.id},'dre')">
+        <p class="text-xs text-purple-600 font-semibold">Mean DRE (Click for Chart)</p>
+        <p class="text-2xl font-bold">${p.avgDefectRemovalEfficiency.toFixed(2)}%</p>
+        ${(() => {
+            const target = getKPITarget('dre');
+            const met = isTargetMet(p.avgDefectRemovalEfficiency, target);
+            const alert = getAlertStatus(p.avgDefectRemovalEfficiency, p.dreStats.ucl, p.dreStats.lcl, p.dreStats.stdDev);
+            return `<div class="flex items-center justify-between mt-2">
+                <p class="text-xs ${met ? 'text-green-600' : 'text-red-600'} font-semibold">
+                    Target: ${target.label} ${met ? '✓' : '✗'}
+                </p>
+                <div class="flex items-center gap-1">
+                    <span class="text-lg">${alert.emoji}</span>
+                    <span class="text-xs ${alert.textClass} font-semibold">${alert.level}</span>
+                </div>
+            </div>`;
+        })()}
+    </div>
+`:''}
                                 <button onclick="openProject(${p.id})" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Open →</button>
                             </div>
                         `).join('')}
@@ -438,251 +842,457 @@
         
         async function deleteFeature(featureId){if(!confirm('Delete feature?'))return;const response=await fetch('api/features.php',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:featureId})});if(response.ok){await loadFeatures(currentProject.id);render()}}
         
-        function showChart(projectId,type){
-            console.log('=== showChart called ===');
-            console.log('projectId:', projectId);
-            console.log('type:', type);
-            
-            const project=projects.find(p=>p.id===projectId);
-            if(!project){
-                console.error('❌ Project not found:', projectId);
-                return;
-            }
-            console.log('✓ Project found:', project.name);
-            
-            // Get current filter period for chart title
-            const filterDates = getFilterDates(currentFilter);
-            let filterPeriodText = '';
-            if (filterDates) {
-                filterPeriodText = ` (${filterDates.start} to ${filterDates.end})`;
-            } else {
-                filterPeriodText = ' (All Time)';
-            }
-            
-            let stats,modalId,chartId,prefix;
-            
-            if(type==='productivity'){
-                stats=project.productivityStats;
-                modalId='productivityModal';
-                chartId='productivityChart';
-                prefix='prod';
-            }else if(type==='effortVariance'){
-                stats=project.effortVarianceStats;
-                modalId='effortVarianceModal';
-                chartId='effortChart';
-                prefix='effort';
-            }else if(type==='ontimeIndex'){
-                stats=project.ontimeIndexStats;
-                modalId='ontimeModal';
-                chartId='ontimeChart';
-                prefix='ontime';
-            }else if(type==='dre'){
-                stats=project.dreStats;
-                modalId='dreModal';
-                chartId='dreChart';
-                prefix='dre';
-            }else{
-                console.error('❌ Unknown chart type:', type);
-                return;
-            }
-            
-            console.log('✓ Chart type:', type);
-            console.log('✓ Modal ID:', modalId);
-            console.log('✓ Chart ID:', chartId);
-            console.log('✓ Prefix:', prefix);
-            console.log('✓ Stats:', stats ? 'available' : 'MISSING');
-            
-            if(!stats){
-                console.error('❌ No statistics data available for type:', type);
-                alert('No statistics data available for ' + type);
-                return;
-            }
-            
-            console.log('Opening modal:', modalId);
-            
-            // Close all other modals first to prevent overlap (including import modal)
-            console.log('Closing all other modals first...');
-            const allModalIds = ['productivityModal', 'effortVarianceModal', 'ontimeModal', 'dreModal', 'importModal', 'customDateModal'];
-            allModalIds.forEach(id => {
-                if (id !== modalId) {
-                    const otherModal = document.getElementById(id);
-                    if (otherModal) {
-                        otherModal.classList.remove('active');
-                    }
-                }
-            });
-            console.log('✓ Closed all other modals (including import modal)');
+        // ===================================================================
+// UPDATED showChart() FUNCTION WITH TARGET AND ALERT LOGIC
+// Replace the existing showChart function with this complete version
+// ===================================================================
 
-            // Show modal
-            const modal = document.getElementById(modalId);
-            console.log('Modal element:', modal ? 'found' : 'NOT FOUND');
-            if(modal){
-                modal.classList.add('active');
-                console.log('✓ Added active class to modal');
-            }else{
-                console.error('❌ Modal not found in DOM:', modalId);
-                return;
+function showChart(projectId, type) {
+    console.log('=== showChart called ===');
+    console.log('projectId:', projectId);
+    console.log('type:', type);
+    
+    const project = projects.find(p => p.id === projectId);
+    if (!project) {
+        console.error('❌ Project not found:', projectId);
+        return;
+    }
+    console.log('✓ Project found:', project.name);
+    
+    // Get current filter period for chart title
+    const filterDates = getFilterDates(currentFilter);
+    let filterPeriodText = '';
+    if (filterDates) {
+        filterPeriodText = ` (${filterDates.start} to ${filterDates.end})`;
+    } else {
+        filterPeriodText = ' (All Time)';
+    }
+    
+    let stats, modalId, chartId, prefix;
+    
+    if (type === 'productivity') {
+        stats = project.productivityStats;
+        modalId = 'productivityModal';
+        chartId = 'productivityChart';
+        prefix = 'prod';
+    } else if (type === 'effortVariance') {
+        stats = project.effortVarianceStats;
+        modalId = 'effortVarianceModal';
+        chartId = 'effortChart';
+        prefix = 'effort';
+    } else if (type === 'ontimeIndex') {
+        stats = project.ontimeIndexStats;
+        modalId = 'ontimeModal';
+        chartId = 'ontimeChart';
+        prefix = 'ontime';
+    } else if (type === 'dre') {
+        stats = project.dreStats;
+        modalId = 'dreModal';
+        chartId = 'dreChart';
+        prefix = 'dre';
+    } else {
+        console.error('❌ Unknown chart type:', type);
+        return;
+    }
+    
+    console.log('✓ Chart type:', type);
+    console.log('✓ Stats:', stats ? 'available' : 'MISSING');
+    
+    if (!stats) {
+        console.error('❌ No statistics data available for type:', type);
+        alert('No statistics data available for ' + type);
+        return;
+    }
+    
+    // Close all other modals first to prevent overlap
+    const allModalIds = ['productivityModal', 'effortVarianceModal', 'ontimeModal', 'dreModal', 'importModal', 'customDateModal'];
+    allModalIds.forEach(id => {
+        if (id !== modalId) {
+            const otherModal = document.getElementById(id);
+            if (otherModal) {
+                otherModal.classList.remove('active');
             }
-            
-            // Set statistics - CHECK EACH ELEMENT FIRST
-            console.log('Setting statistics for prefix:', prefix);
-            
-            const meanEl = document.getElementById(prefix+'Mean');
-            const uclEl = document.getElementById(prefix+'UCL');
-            const lclEl = document.getElementById(prefix+'LCL');
-            const sdEl = document.getElementById(prefix+'SD');
-            const countEl = document.getElementById(prefix+'Count');
-            
-            console.log('Elements check:');
-            console.log('  ' + prefix + 'Mean:', meanEl ? 'found' : 'NOT FOUND');
-            console.log('  ' + prefix + 'UCL:', uclEl ? 'found' : 'NOT FOUND');
-            console.log('  ' + prefix + 'LCL:', lclEl ? 'found' : 'NOT FOUND');
-            console.log('  ' + prefix + 'SD:', sdEl ? 'found' : 'NOT FOUND');
-            console.log('  ' + prefix + 'Count:', countEl ? 'found' : 'NOT FOUND');
-            
-            if(!meanEl || !uclEl || !lclEl || !sdEl || !countEl){
-                console.error('❌ One or more statistic elements not found!');
-                alert('Chart elements not found. Check console for details.');
-                return;
-            }
-            
-            try{
-                meanEl.textContent=stats.mean.toFixed(type==='productivity'?4:2)+(type==='productivity'?'':'%');
-                uclEl.textContent=stats.ucl.toFixed(type==='productivity'?4:2)+(type==='productivity'?'':'%');
-                lclEl.textContent=stats.lcl.toFixed(type==='productivity'?4:2)+(type==='productivity'?'':'%');
-                sdEl.textContent=stats.stdDev.toFixed(type==='productivity'?4:2)+(type==='productivity'?'':'%');
-                countEl.textContent=type==='dre'?stats.featureCount:stats.features.length;
-                console.log('✓ Set statistics values (including SD)');
-            }catch(e){
-                console.error('❌ Error setting statistics:', e);
-                return;
-            }
-            
-            // Prepare chart data
-            let chartFeatures,labels,values;
-            
-            if(type==='dre'){
-                chartFeatures=stats.features.filter(f=>(f.sitDefects+f.uatDefects)>0);
-                labels=chartFeatures.map(f=>f.name);
-                values=chartFeatures.map(f=>f.defectRemovalEfficiency);
-                console.log('DRE features with defects:', chartFeatures.length);
-            }else{
-                chartFeatures=stats.features;
-                labels=chartFeatures.map(f=>f.name);
-                if(type==='productivity'){
-                    values=chartFeatures.map(f=>f.productivity);
-                }else if(type==='effortVariance'){
-                    values=chartFeatures.map(f=>f.effortVariance);
-                }else if(type==='ontimeIndex'){
-                    values=chartFeatures.map(f=>f.ontimeIndex);
-                }
-                console.log('Chart features:', chartFeatures.length);
-            }
-            
-            if(values.length===0){
-                console.warn('⚠ No data available for chart');
-                alert('No data available for chart');
-                if(type==='dre'){
-                    document.getElementById(modalId).classList.add('hidden');
-                }else{
-                    document.getElementById(modalId).classList.remove('active');
-                }
-                return;
-            }
-            
-            console.log('Chart data points:', values.length);
-            
-            const meanLine=new Array(values.length).fill(stats.mean);
-            const uclLine=new Array(values.length).fill(stats.ucl);
-            const lclLine=new Array(values.length).fill(stats.lcl);
-            
-            // Check if chart canvas exists
-            const canvas = document.getElementById(chartId);
-            console.log('Canvas element (' + chartId + '):', canvas ? 'found' : 'NOT FOUND');
-            
-            if(!canvas){
-                console.error('❌ Chart canvas not found:', chartId);
-                alert('Chart canvas not found. Check console for details.');
-                return;
-            }
-            
-            // Destroy existing chart
-            if(charts[chartId]){
-                charts[chartId].destroy();
-                console.log('✓ Destroyed existing chart');
-            }
-            
-            // Create new chart with filter period in title
-            try{
-                const ctx=canvas.getContext('2d');
-                charts[chartId]=new Chart(ctx,{
-                    type:'line',
-                    data:{
-                        labels:labels,
-                        datasets:[
-                            {
-                                label:'Feature '+type,
-                                data:values,
-                                borderColor:'rgb(59,130,246)',
-                                borderWidth:3,
-                                pointRadius:6
-                            },
-                            {
-                                label:'Mean',
-                                data:meanLine,
-                                borderColor:'rgb(34,197,94)',
-                                borderDash:[5,5],
-                                pointRadius:0
-                            },
-                            {
-                                label:'UCL',
-                                data:uclLine,
-                                borderColor:'rgb(239,68,68)',
-                                borderDash:[10,5],
-                                pointRadius:0
-                            },
-                            {
-                                label:'LCL',
-                                data:lclLine,
-                                borderColor:'rgb(34,197,94)',
-                                borderDash:[10,5],
-                                pointRadius:0
-                            }
-                        ]
+        }
+    });
+
+    // Show modal
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('active');
+    } else {
+        console.error('❌ Modal not found in DOM:', modalId);
+        return;
+    }
+    
+    // Set statistics - CHECK EACH ELEMENT FIRST
+    const meanEl = document.getElementById(prefix + 'Mean');
+    const uclEl = document.getElementById(prefix + 'UCL');
+    const lclEl = document.getElementById(prefix + 'LCL');
+    const sdEl = document.getElementById(prefix + 'SD');
+    const targetEl = document.getElementById(prefix + 'Target');
+    const alertEl = document.getElementById(prefix + 'Alert');
+    const alertBoxEl = document.getElementById(prefix + 'AlertBox');
+    const alertDescEl = document.getElementById(prefix + 'AlertDesc');
+    const countEl = document.getElementById(prefix + 'Count');
+    
+    if (!meanEl || !uclEl || !lclEl || !sdEl || !countEl) {
+        console.error('❌ One or more required statistic elements not found!');
+        alert('Chart elements not found. Check console for details.');
+        return;
+    }
+    
+    try {
+        // Set basic statistics
+        meanEl.textContent = stats.mean.toFixed(type === 'productivity' ? 4 : 2) + (type === 'productivity' ? '' : '%');
+        uclEl.textContent = stats.ucl.toFixed(type === 'productivity' ? 4 : 2) + (type === 'productivity' ? '' : '%');
+        lclEl.textContent = stats.lcl.toFixed(type === 'productivity' ? 4 : 2) + (type === 'productivity' ? '' : '%');
+        sdEl.textContent = stats.stdDev.toFixed(type === 'productivity' ? 4 : 2) + (type === 'productivity' ? '' : '%');
+        countEl.textContent = type === 'dre' ? stats.featureCount : stats.features.length;
+        
+        // Set target
+        const target = getKPITarget(type);
+        if (targetEl) {
+            targetEl.textContent = target.label;
+        }
+        
+        // Calculate and set alert (using 1-sigma logic)
+        const alert = getAlertStatus(stats.mean, stats.ucl, stats.lcl, stats.stdDev);
+        if (alertEl && alertBoxEl) {
+            alertEl.textContent = alert.emoji;
+            alertBoxEl.className = 'p-4 rounded ' + alert.bgClass;
+        }
+        
+        // Set alert description with zone information
+        if (alertDescEl) {
+            const targetMet = isTargetMet(stats.mean, target);
+            const targetStatus = targetMet ? '✓ Target Met' : '✗ Target Not Met';
+            alertDescEl.innerHTML = `<strong>Status:</strong> ${alert.description} (${alert.zone}) | ${targetStatus}`;
+        }
+        
+        console.log('✓ Set all statistics values');
+    } catch (e) {
+        console.error('❌ Error setting statistics:', e);
+        return;
+    }
+    
+    // Prepare chart data
+    let chartFeatures, labels, values;
+    
+    if (type === 'dre') {
+        chartFeatures = stats.features.filter(f => (f.sitDefects + f.uatDefects) > 0);
+        labels = chartFeatures.map(f => f.name);
+        values = chartFeatures.map(f => f.defectRemovalEfficiency);
+    } else {
+        chartFeatures = stats.features;
+        labels = chartFeatures.map(f => f.name);
+        if (type === 'productivity') {
+            values = chartFeatures.map(f => f.productivity);
+        } else if (type === 'effortVariance') {
+            values = chartFeatures.map(f => f.effortVariance);
+        } else if (type === 'ontimeIndex') {
+            values = chartFeatures.map(f => f.ontimeIndex);
+        }
+    }
+    
+    if (values.length === 0) {
+        console.warn('⚠ No data available for chart');
+        alert('No data available for chart');
+        document.getElementById(modalId).classList.remove('active');
+        return;
+    }
+    
+    // Calculate ALL sigma limits (1σ, 2σ, 3σ)
+    const centerline = stats.mean;
+    const stdDev = stats.stdDev;
+    
+    // 1-sigma limits (Green/Yellow boundary)
+    const oneSigmaUpper = centerline + stdDev;
+    const oneSigmaLower = centerline - stdDev;
+    
+    // 2-sigma limits (Reference/Yellow zone)
+    const twoSigmaUpper = centerline + (2 * stdDev);
+    const twoSigmaLower = centerline - (2 * stdDev);
+    
+    // 3-sigma limits (UCL/LCL - Yellow/Red boundary)
+    const threeSigmaUpper = stats.ucl;  // UCL = Mean + 3σ
+    const threeSigmaLower = stats.lcl;  // LCL = Mean - 3σ
+    
+    // Create arrays for chart lines
+    const meanLine = new Array(values.length).fill(centerline);
+    const oneSigmaUpperLine = new Array(values.length).fill(oneSigmaUpper);
+    const oneSigmaLowerLine = new Array(values.length).fill(oneSigmaLower);
+    const twoSigmaUpperLine = new Array(values.length).fill(twoSigmaUpper);
+    const twoSigmaLowerLine = new Array(values.length).fill(twoSigmaLower);
+    const threeSigmaUpperLine = new Array(values.length).fill(threeSigmaUpper);
+    const threeSigmaLowerLine = new Array(values.length).fill(threeSigmaLower);
+    
+    // ===================================================================
+    // COLOR EACH POINT BASED ON ITS SIGMA ZONE
+    // ===================================================================
+    const pointColors = [];
+    const pointBorderColors = [];
+    const pointBackgroundColors = [];
+    
+    values.forEach(value => {
+        const zone = getSigmaZone(value, centerline, stdDev);
+        
+        if (zone.color === 'green') {
+            // GREEN zone (within ±1σ)
+            pointColors.push('rgba(34, 197, 94, 1)');           // Solid green
+            pointBorderColors.push('rgba(34, 197, 94, 1)');     // Border green
+            pointBackgroundColors.push('rgba(34, 197, 94, 0.8)'); // Fill green
+        } else if (zone.color === 'yellow' || zone.color === 'orange') {
+            // YELLOW zone (between 1σ and 3σ)
+            pointColors.push('rgba(251, 191, 36, 1)');          // Solid yellow
+            pointBorderColors.push('rgba(251, 191, 36, 1)');    // Border yellow
+            pointBackgroundColors.push('rgba(251, 191, 36, 0.8)'); // Fill yellow
+        } else {
+            // RED zone (beyond ±3σ)
+            pointColors.push('rgba(239, 68, 68, 1)');           // Solid red
+            pointBorderColors.push('rgba(239, 68, 68, 1)');     // Border red
+            pointBackgroundColors.push('rgba(239, 68, 68, 0.8)'); // Fill red
+        }
+    });
+    
+    console.log('✓ Point colors calculated:', {
+        green: pointColors.filter(c => c.includes('34, 197')).length,
+        yellow: pointColors.filter(c => c.includes('251, 191')).length,
+        red: pointColors.filter(c => c.includes('239, 68')).length
+    });
+    
+    console.log('✓ Sigma limits calculated:', {
+        '1σ': { upper: oneSigmaUpper.toFixed(4), lower: oneSigmaLower.toFixed(4) },
+        '2σ': { upper: twoSigmaUpper.toFixed(4), lower: twoSigmaLower.toFixed(4) },
+        '3σ': { upper: threeSigmaUpper.toFixed(4), lower: threeSigmaLower.toFixed(4) }
+    });
+    
+    // Check if chart canvas exists
+    const canvas = document.getElementById(chartId);
+    if (!canvas) {
+        console.error('❌ Chart canvas not found:', chartId);
+        return;
+    }
+    
+    // Destroy existing chart
+    if (charts[chartId]) {
+        charts[chartId].destroy();
+    }
+    
+    // Create new chart with ALL sigma lines and COLOR-CODED POINTS
+    try {
+        const ctx = canvas.getContext('2d');
+        charts[chartId] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Feature Values',
+                        data: values,
+                        borderColor: 'rgba(100, 116, 139, 0.4)',  // Subtle gray line
+                        backgroundColor: 'rgba(100, 116, 139, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 7,
+                        pointHoverRadius: 9,
+                        pointBorderWidth: 2,
+                        // COLOR EACH POINT INDIVIDUALLY
+                        pointBackgroundColor: pointBackgroundColors,
+                        pointBorderColor: pointBorderColors,
+                        pointHoverBackgroundColor: pointColors,
+                        pointHoverBorderColor: pointColors,
+                        fill: false,
+                        order: 1,
+                        tension: 0.1
                     },
-                    options:{
-                        responsive:true,
-                        plugins:{
-                            title:{
-                                display:true,
-                                text:project.name+' - '+type+' Chart'+filterPeriodText,
-                                font: {
-                                    size: 16,
-                                    weight: 'bold'
-                                }
-                            },
-                            subtitle: {
-                                display: filterDates ? true : false,
-                                text: filterDates ? `Filter Period: ${filterDates.start} to ${filterDates.end}` : '',
-                                font: {
-                                    size: 12
-                                },
-                                color: '#6B7280'
-                            }
+                    {
+                        label: 'Mean (Centerline)',
+                        data: meanLine,
+                        borderColor: 'rgb(34,197,94)',
+                        borderDash: [5, 5],
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        fill: false,
+                        order: 2
+                    },
+                    {
+                        label: '±1σ Upper (Green/Yellow)',
+                        data: oneSigmaUpperLine,
+                        borderColor: 'rgb(34,197,94)',
+                        borderDash: [8, 4],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false,
+                        order: 3
+                    },
+                    {
+                        label: '±1σ Lower (Green/Yellow)',
+                        data: oneSigmaLowerLine,
+                        borderColor: 'rgb(34,197,94)',
+                        borderDash: [8, 4],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false,
+                        order: 4
+                    },
+                    {
+                        label: '±2σ Upper (Yellow Zone)',
+                        data: twoSigmaUpperLine,
+                        borderColor: 'rgb(251,191,36)',
+                        borderDash: [5, 5],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false,
+                        order: 5
+                    },
+                    {
+                        label: '±2σ Lower (Yellow Zone)',
+                        data: twoSigmaLowerLine,
+                        borderColor: 'rgb(251,191,36)',
+                        borderDash: [5, 5],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false,
+                        order: 6
+                    },
+                    {
+                        label: '±3σ UCL (Yellow/Red)',
+                        data: threeSigmaUpperLine,
+                        borderColor: 'rgb(239,68,68)',
+                        borderDash: [10, 5],
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        fill: false,
+                        order: 7
+                    },
+                    {
+                        label: '±3σ LCL (Yellow/Red)',
+                        data: threeSigmaLowerLine,
+                        borderColor: 'rgb(239,68,68)',
+                        borderDash: [10, 5],
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        fill: false,
+                        order: 8
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: project.name + ' - ' + type + ' Chart' + filterPeriodText,
+                        font: {
+                            size: 16,
+                            weight: 'bold'
+                        }
+                    },
+                    subtitle: {
+                        display: true,
+                        text: '🟢 Green: Within ±1σ  |  🟡 Yellow: 1σ-3σ  |  🔴 Red: Beyond ±3σ',
+                        font: {
+                            size: 11
                         },
-                        scales:{
-                            y:{
-                                beginAtZero:true
+                        color: '#6B7280',
+                        padding: {
+                            bottom: 10
+                        }
+                    },
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: false,
+                            padding: 10,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                if (context.datasetIndex === 0) {
+                                    const value = context.parsed.y;
+                                    const zone = getSigmaZone(value, centerline, stdDev);
+                                    return [
+                                        `Zone: ${zone.zone}`,
+                                        `Status: ${zone.stability}`,
+                                        `Sigma: ${zone.sigmaValue}σ`
+                                    ];
+                                }
+                                return '';
+                            },
+                            labelColor: function(context) {
+                                if (context.datasetIndex === 0) {
+                                    const value = context.parsed.y;
+                                    const zone = getSigmaZone(value, centerline, stdDev);
+                                    
+                                    if (zone.color === 'green') {
+                                        return {
+                                            borderColor: 'rgb(34, 197, 94)',
+                                            backgroundColor: 'rgb(34, 197, 94)'
+                                        };
+                                    } else if (zone.color === 'yellow' || zone.color === 'orange') {
+                                        return {
+                                            borderColor: 'rgb(251, 191, 36)',
+                                            backgroundColor: 'rgb(251, 191, 36)'
+                                        };
+                                    } else {
+                                        return {
+                                            borderColor: 'rgb(239, 68, 68)',
+                                            backgroundColor: 'rgb(239, 68, 68)'
+                                        };
+                                    }
+                                }
+                                return {
+                                    borderColor: context.dataset.borderColor,
+                                    backgroundColor: context.dataset.borderColor
+                                };
                             }
                         }
                     }
-                });
-                console.log('✓ Created new chart successfully');
-                console.log('=== showChart completed ===');
-            }catch(e){
-                console.error('❌ Error creating chart:', e);
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: type === 'productivity' ? 'Productivity' : type + ' (%)'
+                        },
+                        grid: {
+                            color: function(context) {
+                                const value = context.tick.value;
+                                // Highlight GREEN zone (within ±1σ) with subtle background
+                                if (value >= oneSigmaLower && value <= oneSigmaUpper) {
+                                    return 'rgba(34,197,94,0.08)';
+                                }
+                                // Highlight YELLOW zone (between 1σ and 3σ)
+                                else if ((value > oneSigmaUpper && value <= threeSigmaUpper) ||
+                                         (value < oneSigmaLower && value >= threeSigmaLower)) {
+                                    return 'rgba(251,191,36,0.05)';
+                                }
+                                return 'rgba(0,0,0,0.1)';
+                            }
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Features'
+                        }
+                    }
+                }
             }
-        }
+        });
+        console.log('✓ Created chart with color-coded points and all sigma lines');
+        console.log('=== showChart completed ===');
+    } catch (e) {
+        console.error('❌ Error creating chart:', e);
+    }
+}
+
         
         function closeChartModal(id){
             document.getElementById(id).classList.remove('active');
