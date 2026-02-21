@@ -9,6 +9,7 @@ try {
         // Get optional date filter parameters
         $filterStartDate = isset($_GET['filterStartDate']) ? $_GET['filterStartDate'] : null;
         $filterEndDate = isset($_GET['filterEndDate']) ? $_GET['filterEndDate'] : null;
+        $filterMode = isset($_GET['filterMode']) ? $_GET['filterMode'] : 'target'; // 'target' or 'actual'
         
         $result = $db->query("SELECT p.*, 
             COUNT(DISTINCT f.id) as feature_count,
@@ -21,31 +22,81 @@ try {
         
         $projects = [];
         while ($p = $result->fetch_assoc()) {
-            // Build WHERE clause for date filtering
-            $dateFilter = '';
+            // Build date filter based on mode
+            $dateFilterClause = '';
+            $additionalJoin = '';
+            
             if ($filterStartDate && $filterEndDate) {
-                $dateFilter = "AND f.target_end_date >= '" . $db->real_escape_string($filterStartDate) . "' 
-                              AND f.target_end_date <= '" . $db->real_escape_string($filterEndDate) . "'";
+                $startDateEsc = $db->real_escape_string($filterStartDate);
+                $endDateEsc = $db->real_escape_string($filterEndDate);
+                
+                if ($filterMode === 'actual') {
+                    // Filter by ACTUAL completion dates (stories completed in period)
+                    // Only include features that have at least one completed story in the date range
+                    $dateFilterClause = "
+                        AND EXISTS (
+                            SELECT 1 FROM productivity_data pd2 
+                            WHERE pd2.feature_id = f.id 
+                            AND pd2.actual_end_date >= '$startDateEsc'
+                            AND pd2.actual_end_date <= '$endDateEsc'
+                            AND pd2.is_completed = 1
+                        )";
+                } else {
+                    // Filter by TARGET dates (features planned to complete in period)
+                    $dateFilterClause = "
+                        AND f.target_end_date >= '$startDateEsc' 
+                        AND f.target_end_date <= '$endDateEsc'";
+                }
             }
             
             // Get all features with their metrics (filtered by date if applicable)
-            $stmt = $db->prepare("
+            $query = "
                 SELECT f.id, f.name, f.total_man_days, f.target_end_date,
                     f.actual_total_man_days,
                     f.sit_defects, f.uat_defects, f.defect_removal_efficiency,
-                    AVG(pd.productivity) as productivity,
-                    COUNT(us.id) as total_stories,
-                    SUM(CASE WHEN pd.is_completed = 1 THEN 1 ELSE 0 END) as completed_stories
+                    COUNT(DISTINCT us.id) as total_stories,
+                    COUNT(DISTINCT CASE WHEN pd.is_completed = 1 THEN pd.id END) as completed_stories_all";
+            
+            // Add period-specific counts for actual mode
+            if ($filterMode === 'actual' && $filterStartDate && $filterEndDate) {
+                $query .= ",
+                    COUNT(DISTINCT CASE 
+                        WHEN pd.is_completed = 1 
+                        AND pd.actual_end_date >= '$startDateEsc'
+                        AND pd.actual_end_date <= '$endDateEsc'
+                        THEN pd.id 
+                    END) as completed_stories_period,
+                    SUM(CASE 
+                        WHEN pd.is_completed = 1 
+                        AND pd.actual_end_date >= '$startDateEsc'
+                        AND pd.actual_end_date <= '$endDateEsc'
+                        THEN pd.efforts_man_days 
+                        ELSE 0 
+                    END) as actual_dev_efforts_period,
+                    SUM(CASE 
+                        WHEN pd.is_completed = 1 
+                        AND pd.actual_end_date >= '$startDateEsc'
+                        AND pd.actual_end_date <= '$endDateEsc'
+                        THEN us.story_points 
+                        ELSE 0 
+                    END) as story_points_period";
+            } else {
+                $query .= ",
+                    0 as completed_stories_period,
+                    0 as actual_dev_efforts_period,
+                    0 as story_points_period";
+            }
+            
+            $query .= "
                 FROM features f
                 LEFT JOIN user_stories us ON f.id = us.feature_id
-                LEFT JOIN productivity_data pd ON f.id = pd.feature_id
-                WHERE f.project_id = ? " . $dateFilter . "
-                GROUP BY f.id
-                HAVING productivity IS NOT NULL AND productivity > 0
-            ");
-            $stmt->bind_param('i', $p['id']);
-            $stmt->execute();
-            $prodResult = $stmt->get_result();
+                LEFT JOIN productivity_data pd ON us.id = pd.story_id AND pd.feature_id = f.id
+                WHERE f.project_id = " . (int)$p['id'] . " " . $dateFilterClause . "
+                GROUP BY f.id, f.name, f.total_man_days, f.target_end_date, 
+                         f.actual_total_man_days, f.sit_defects, f.uat_defects, 
+                         f.defect_removal_efficiency";
+            
+            $featuresResult = $db->query($query);
             
             $featureMetrics = [];
             $sumProductivity = 0;
@@ -53,52 +104,117 @@ try {
             $sumOntimeIndex = 0;
             $sumDRE = 0;
             $featureCount = 0;
-            $dreFeatureCount = 0; // Count features with defect data
+            $dreFeatureCount = 0;
             
-            while ($prodRow = $prodResult->fetch_assoc()) {
-                $prod = (float)$prodRow['productivity'];
-                $estimatedDevMD = (float)$prodRow['total_man_days'];
-                $estimatedTotalMD = $estimatedDevMD / 0.3; // Total project MD from dev MD
-                $actualTotalMD = (float)$prodRow['actual_total_man_days'];
-                $totalStories = (int)$prodRow['total_stories'];
-                $completedStories = (int)$prodRow['completed_stories'];
+            while ($f = $featuresResult->fetch_assoc()) {
+                $featureId = (int)$f['id'];
                 
-                // Calculate Effort Variance using TOTAL project man days (all phases)
-                $effortVariance = 0;
-                if ($estimatedTotalMD > 0 && $actualTotalMD > 0) {
-                    $effortVariance = (($actualTotalMD - $estimatedTotalMD) / $estimatedTotalMD) * 100;
+                // Calculate metrics based on filter mode
+                if ($filterMode === 'actual' && $filterStartDate && $filterEndDate) {
+                    // ACTUAL MODE: Use only productivity data from the period
+                    $completedInPeriod = (int)$f['completed_stories_period'];
+                    $actualDevEffortsPeriod = (float)$f['actual_dev_efforts_period'];
+                    $storyPointsPeriod = (float)$f['story_points_period'];
+                    
+                    // Skip features with no completed work in period
+                    if ($completedInPeriod == 0) {
+                        continue;
+                    }
+                    
+                    // Calculate productivity for period
+                    $prod = $actualDevEffortsPeriod > 0 ? $storyPointsPeriod / $actualDevEffortsPeriod : 0;
+                    
+                    // Calculate proportional estimate for completed stories
+                    $totalStories = (int)$f['total_stories'];
+                    $estimatedDevMD = (float)$f['total_man_days'];
+                    $proportionalEstimate = $totalStories > 0 ? 
+                        ($completedInPeriod / $totalStories) * $estimatedDevMD : 0;
+                    
+                    // Effort variance for period (dev only)
+                    $effortVariance = $proportionalEstimate > 0 ? 
+                        (($actualDevEffortsPeriod - $proportionalEstimate) / $proportionalEstimate) * 100 : 0;
+                    
+                    // Ontime index for period
+                    // Get stories completed in period and check if they were on time
+                    $ontimeQuery = "
+                        SELECT COUNT(*) as ontime_count
+                        FROM productivity_data pd
+                        JOIN user_stories us ON pd.story_id = us.id
+                        WHERE pd.feature_id = $featureId
+                        AND pd.is_completed = 1
+                        AND pd.actual_end_date >= '$startDateEsc'
+                        AND pd.actual_end_date <= '$endDateEsc'
+                        AND pd.actual_end_date <= us.target_end_date";
+                    
+                    $ontimeResult = $db->query($ontimeQuery);
+                    $ontimeRow = $ontimeResult->fetch_assoc();
+                    $ontimeCount = (int)$ontimeRow['ontime_count'];
+                    
+                    $ontimeIndex = $completedInPeriod > 0 ? 
+                        ($ontimeCount / $completedInPeriod) * 100 : 0;
+                    
+                } else {
+                    // TARGET MODE: Use all feature data (existing logic)
+                    // Get productivity data for entire feature
+                    $prodQuery = "
+                        SELECT AVG(productivity) as avg_prod,
+                            SUM(efforts_man_days) as actual_dev_md,
+                            COUNT(*) as total_tracked,
+                            SUM(CASE WHEN is_completed = 1 THEN 1 ELSE 0 END) as completed_count
+                        FROM productivity_data 
+                        WHERE feature_id = $featureId";
+                    
+                    $prodResult = $db->query($prodQuery);
+                    $prodData = $prodResult->fetch_assoc();
+                    
+                    $prod = $prodData['avg_prod'] ? (float)$prodData['avg_prod'] : 0;
+                    $actualDevMD = $prodData['actual_dev_md'] ? (float)$prodData['actual_dev_md'] : 0;
+                    
+                    // Skip if no productivity data
+                    if ($prod == 0) {
+                        continue;
+                    }
+                    
+                    // Calculate effort variance using total project MD
+                    $estimatedDevMD = (float)$f['total_man_days'];
+                    $estimatedTotalMD = $estimatedDevMD / 0.3;
+                    $actualTotalMD = (float)$f['actual_total_man_days'];
+                    
+                    $effortVariance = 0;
+                    if ($estimatedTotalMD > 0 && $actualTotalMD > 0) {
+                        $effortVariance = (($actualTotalMD - $estimatedTotalMD) / $estimatedTotalMD) * 100;
+                    }
+                    
+                    // Calculate ontime index
+                    $totalStories = (int)$f['total_stories'];
+                    $completedStories = (int)$f['completed_stories_all'];
+                    $ontimeIndex = $totalStories > 0 ? 
+                        ($completedStories / $totalStories) * 100 : 0;
                 }
                 
-                // Calculate Ontime Index for this feature
-                $ontimeIndex = 0;
-                if ($totalStories > 0) {
-                    $ontimeIndex = ($completedStories / $totalStories) * 100;
-                }
-                
-                // Get DRE for this feature
-                $dre = (float)$prodRow['defect_removal_efficiency'];
-                $sitDefects = (int)$prodRow['sit_defects'];
-                $uatDefects = (int)$prodRow['uat_defects'];
+                // DRE is same for both modes (feature-level metric)
+                $dre = (float)$f['defect_removal_efficiency'];
+                $sitDefects = (int)$f['sit_defects'];
+                $uatDefects = (int)$f['uat_defects'];
                 $totalDefects = $sitDefects + $uatDefects;
                 
                 $featureMetrics[] = [
-                    'id' => (int)$prodRow['id'],
-                    'name' => $prodRow['name'],
+                    'id' => $featureId,
+                    'name' => $f['name'],
                     'productivity' => $prod,
                     'effortVariance' => $effortVariance,
                     'ontimeIndex' => $ontimeIndex,
                     'defectRemovalEfficiency' => $dre,
                     'sitDefects' => $sitDefects,
                     'uatDefects' => $uatDefects,
-                    'targetEndDate' => $prodRow['target_end_date']
+                    'targetEndDate' => $f['target_end_date']
                 ];
                 
-                // Sum up all feature values for mean calculation
+                // Sum for mean calculation
                 $sumProductivity += $prod;
                 $sumEffortVariance += $effortVariance;
                 $sumOntimeIndex += $ontimeIndex;
                 
-                // Only include features with defect data in DRE calculation
                 if ($totalDefects > 0) {
                     $sumDRE += $dre;
                     $dreFeatureCount++;
@@ -106,12 +222,16 @@ try {
                 
                 $featureCount++;
             }
-            $stmt->close();
             
-            // Calculate means as: Sum of feature values / Number of features
-            $avgProductivity = $featureCount > 0 ? $sumProductivity / $featureCount : 0;
-            $avgEffortVariance = $featureCount > 0 ? $sumEffortVariance / $featureCount : 0;
-            $avgOntimeIndex = $featureCount > 0 ? $sumOntimeIndex / $featureCount : 0;
+            // Skip project if no features with data
+            if ($featureCount == 0) {
+                continue;
+            }
+            
+            // Calculate means
+            $avgProductivity = $sumProductivity / $featureCount;
+            $avgEffortVariance = $sumEffortVariance / $featureCount;
+            $avgOntimeIndex = $sumOntimeIndex / $featureCount;
             $avgDRE = $dreFeatureCount > 0 ? $sumDRE / $dreFeatureCount : 0;
             
             // Calculate standard deviations for control limits
@@ -126,7 +246,6 @@ try {
                     $effortVarianceVar += pow($fm['effortVariance'] - $avgEffortVariance, 2);
                     $ontimeVarianceVar += pow($fm['ontimeIndex'] - $avgOntimeIndex, 2);
                     
-                    // Only include features with defect data in DRE variance
                     if ($fm['sitDefects'] + $fm['uatDefects'] > 0) {
                         $dreVariance += pow($fm['defectRemovalEfficiency'] - $avgDRE, 2);
                     }
@@ -185,6 +304,7 @@ try {
                     'featureCount' => $dreFeatureCount,
                     'features' => $featureMetrics
                 ],
+                'filterMode' => $filterMode,
                 'created_at' => $p['created_at']
             ];
         }
