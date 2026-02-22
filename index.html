@@ -15,6 +15,89 @@
         .filter-active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: white !important; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); transform: scale(1.05); }
         .date-picker-modal { display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
         .date-picker-modal.active { display: flex; }
+
+        /* A-Z Phone Contact Navigation */
+        .az-nav-sidebar {
+            position: sticky;
+            top: 80px;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            background: rgba(255,255,255,0.92);
+            border-radius: 20px;
+            padding: 8px 4px;
+            box-shadow: 0 4px 20px rgba(99,102,241,0.13);
+            border: 1px solid rgba(99,102,241,0.12);
+            z-index: 50;
+            width: 32px;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            scrollbar-width: none;
+        }
+        .az-nav-sidebar::-webkit-scrollbar { display: none; }
+        .az-nav-btn {
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: #6366f1;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.15s;
+            line-height: 1;
+            text-decoration: none;
+        }
+        .az-nav-btn:hover {
+            background: #6366f1;
+            color: white;
+            transform: scale(1.2);
+        }
+        .az-nav-btn.has-items {
+            color: #4f46e5;
+        }
+        .az-nav-btn.no-items {
+            color: #c7d2fe;
+            cursor: default;
+            pointer-events: none;
+        }
+        .az-nav-btn.active-letter {
+            background: #6366f1;
+            color: white;
+        }
+        .az-section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 24px 0 12px 0;
+            scroll-margin-top: 90px;
+        }
+        .az-section-header:first-child {
+            margin-top: 0;
+        }
+        .az-letter-badge {
+            width: 38px;
+            height: 38px;
+            min-width: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            font-size: 18px;
+            font-weight: 800;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(99,102,241,0.25);
+        }
+        .az-divider {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, rgba(99,102,241,0.3), transparent);
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
@@ -496,9 +579,18 @@ function getSigmaZone(value, centerline, stdDev) {
 }
 
         let currentPage='dashboard',projects=[],currentProject=null,features=[],currentFeature=null,charts={};
-        let currentFilter = null; // null, '3months', '6months', '12months', 'custom'
+        let currentFilter = null;
         let customStartDate = null;
         let customEndDate = null;
+        let currentLetterFilter = null;
+
+        // Organizational view state
+        let orgFilter = null;
+        let orgCustomStart = null;
+        let orgCustomEnd = null;
+        let orgProjects = [];
+        let orgSelectedIds = [];
+        let orgResultsVisible = false;
         
         loadProjects();
         
@@ -544,7 +636,14 @@ function getSigmaZone(value, centerline, stdDev) {
         
         function setFilter(filterType) {
             currentFilter = filterType;
+            currentLetterFilter = null; // reset letter filter on date filter change
             loadProjects();
+        }
+        
+        function setLetterFilter(letter) {
+            // Toggle: clicking the same letter again clears the filter
+            currentLetterFilter = (currentLetterFilter === letter) ? null : letter;
+            renderDashboard();
         }
         
         function openCustomDatePicker() {
@@ -585,7 +684,7 @@ function getSigmaZone(value, centerline, stdDev) {
             loadProjects();
         }
         
-        function render(){currentPage==='dashboard'?renderDashboard():currentPage==='project'?renderProjectView():currentPage==='estimator'?renderEstimator():renderProductivityTracker()}
+        function render(){currentPage==='dashboard'?renderDashboard():currentPage==='project'?renderProjectView():currentPage==='estimator'?renderEstimator():currentPage==='organizational'?renderOrganizational():renderProductivityTracker()}
         
         function renderDashboard() {
             const filterInfo = currentFilter ? getFilterDates(currentFilter) : null;
@@ -599,6 +698,7 @@ function getSigmaZone(value, centerline, stdDev) {
                     <div class="flex justify-between items-center mb-6">
                         <h1 class="text-4xl font-bold">Sprint Estimator V4</h1>
                         <div class="flex gap-3">
+                            <button onclick="openOrganizational()" class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2">🏢 Organizational</button>
                             <button onclick="openImportModal()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">📊 Import Excel</button>
                             <button onclick="createProject()" class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">+ New Project</button>
                         </div>
@@ -635,114 +735,186 @@ function getSigmaZone(value, centerline, stdDev) {
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        ${projects.map(p=>`
-                            <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition fade-in">
-                                <div class="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h2 class="text-xl font-bold">${p.name}</h2>
-                                        ${p.latestFeatureDate ? `<p class="text-xs text-gray-500 mt-1">Latest: ${p.latestFeatureDate}</p>` : ''}
-                                    </div>
-                                    <div class="flex gap-2">
-                                        <button onclick="editProject(${p.id})" class="text-blue-600">✎</button>
-                                        <button onclick="deleteProject(${p.id})" class="text-red-600">×</button>
-                                    </div>
+                    ${(() => {
+                        if (projects.length === 0) {
+                            return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>`;
+                        }
+
+                        // Sort projects A-Z (numeric names first, then alphabetic)
+                        const sorted = [...projects].sort((a, b) => {
+                            const aNum = /^\d/.test(a.name);
+                            const bNum = /^\d/.test(b.name);
+                            if (aNum && !bNum) return -1;
+                            if (!aNum && bNum) return 1;
+                            return a.name.localeCompare(b.name);
+                        });
+
+                        // Group ALL projects — numeric names go under '#', letters under their letter
+                        const groups = {};
+                        sorted.forEach(p => {
+                            const firstChar = p.name[0];
+                            const key = /^\d/.test(firstChar) ? '#' : firstChar.toUpperCase();
+                            if (!groups[key]) groups[key] = [];
+                            groups[key].push(p);
+                        });
+                        const allLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+                        const hasNumeric = !!groups['#'];
+
+                        // Apply letter filter
+                        const activeLetter = currentLetterFilter;
+                        const filteredGroups = activeLetter
+                            ? (groups[activeLetter] ? { [activeLetter]: groups[activeLetter] } : {})
+                            : groups;
+                        // Numeric first, then alphabetic
+                        const visibleLetters = Object.keys(filteredGroups).sort((a, b) => {
+                            if (a === '#') return -1;
+                            if (b === '#') return 1;
+                            return a.localeCompare(b);
+                        });
+
+                        // Build A-Z sidebar — # on top, then A–Z
+                        const sidebarHtml = `
+                            <div class="az-nav-sidebar" id="azNavSidebar">
+                                <a class="az-nav-btn ${hasNumeric ? 'has-items' : 'no-items'} ${activeLetter === '#' ? 'active-letter' : ''}"
+                                   ${hasNumeric ? `href="javascript:void(0)" onclick="setLetterFilter('#')"` : ''}
+                                   title="${hasNumeric ? '# – ' + groups['#'].length + ' numeric project' + (groups['#'].length > 1 ? 's' : '') : '# – none'}"
+                                   style="font-size:11px;">#</a>
+                                <div style="width:16px;height:1px;background:rgba(99,102,241,0.2);margin:2px 0;"></div>
+                                ${allLetters.map(l => `
+                                    <a class="az-nav-btn ${groups[l] ? 'has-items' : 'no-items'} ${activeLetter === l ? 'active-letter' : ''}"
+                                       ${groups[l] ? `href="javascript:void(0)" onclick="setLetterFilter('${l}')"` : ''}
+                                       title="${l}${groups[l] ? ' (' + groups[l].length + ' project' + (groups[l].length > 1 ? 's' : '') + ')' : ' – none'}"
+                                    >${l}</a>
+                                `).join('')}
+                            </div>`;
+
+                        // Active filter label / clear button
+                        const filterLabelHtml = activeLetter ? `
+                            <div class="flex items-center gap-3 mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+                                <div class="az-letter-badge" style="width:32px;height:32px;min-width:32px;font-size:15px;">${activeLetter}</div>
+                                <span class="text-sm font-semibold text-indigo-700">
+                                    ${activeLetter === '#' ? 'Showing numeric projects (0–9)' : 'Showing projects starting with <strong>' + activeLetter + '</strong>'}
+                                    — ${filteredGroups[activeLetter] ? filteredGroups[activeLetter].length : 0} project${filteredGroups[activeLetter] && filteredGroups[activeLetter].length !== 1 ? 's' : ''}
+                                </span>
+                                <button onclick="setLetterFilter('${activeLetter}')" class="ml-auto px-3 py-1 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold">
+                                    ✕ Show All
+                                </button>
+                            </div>` : '';
+
+                        // Build grouped project sections (only for visible letters)
+                        const sectionsHtml = visibleLetters.length === 0
+                            ? `<div class="text-center py-16 text-gray-400">
+                                <p class="text-5xl mb-4">🔍</p>
+                                <p class="text-lg font-semibold">No projects found for <strong>${activeLetter === '#' ? '0–9' : activeLetter}</strong></p>
+                                <button onclick="setLetterFilter('${activeLetter}')" class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm">Show All Projects</button>
+                              </div>`
+                            : visibleLetters.map(letter => {
+                            const groupProjects = filteredGroups[letter];
+                            return `
+                                <div id="az-section-${letter}" class="az-section-header">
+                                    <div class="az-letter-badge">${letter}</div>
+                                    <span class="text-sm text-indigo-400 font-semibold">${letter === '#' ? 'Numeric (0–9) · ' : ''}${groupProjects.length} project${groupProjects.length > 1 ? 's' : ''}</span>
+                                    <div class="az-divider"></div>
                                 </div>
-                                <p class="text-gray-600 text-sm mb-4">${p.description||'No description'}</p>
-                                <div class="grid grid-cols-2 gap-3 mb-4">
-                                    <div class="bg-blue-50 p-3 rounded">
-                                        <p class="text-xs text-blue-600 font-semibold">Features</p>
-                                        <p class="text-2xl font-bold">${p.featureCount}</p>
-                                    </div>
-                                    <div class="bg-purple-50 p-3 rounded">
-                                        <p class="text-xs text-purple-600 font-semibold">Story Points</p>
-                                        <p class="text-2xl font-bold">${p.totalStoryPoints.toFixed(0)}</p>
-                                    </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-2">
+                                    ${groupProjects.map(p => `
+                                        <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition fade-in">
+                                            <div class="flex justify-between items-start mb-4">
+                                                <div>
+                                                    <h2 class="text-xl font-bold">${p.name}</h2>
+                                                    ${p.latestFeatureDate ? `<p class="text-xs text-gray-500 mt-1">Latest: ${p.latestFeatureDate}</p>` : ''}
+                                                </div>
+                                                <div class="flex gap-2">
+                                                    <button onclick="editProject(${p.id})" class="text-blue-600">✎</button>
+                                                    <button onclick="deleteProject(${p.id})" class="text-red-600">×</button>
+                                                </div>
+                                            </div>
+                                            <p class="text-gray-600 text-sm mb-4">${p.description||'No description'}</p>
+                                            <div class="grid grid-cols-2 gap-3 mb-4">
+                                                <div class="bg-blue-50 p-3 rounded">
+                                                    <p class="text-xs text-blue-600 font-semibold">Features</p>
+                                                    <p class="text-2xl font-bold">${p.featureCount}</p>
+                                                </div>
+                                                <div class="bg-purple-50 p-3 rounded">
+                                                    <p class="text-xs text-purple-600 font-semibold">Story Points</p>
+                                                    <p class="text-2xl font-bold">${p.totalStoryPoints.toFixed(0)}</p>
+                                                </div>
+                                            </div>
+                                            ${p.avgProductivity>0?`
+                                            <div class="grid grid-cols-1 gap-2 mb-4">
+                                                <div class="bg-green-50 p-3 rounded cursor-pointer hover:bg-green-100 transition" onclick="showChart(${p.id},'productivity')">
+                                                    <p class="text-xs text-green-600 font-semibold">Mean Productivity (Click for Chart)</p>
+                                                    <p class="text-2xl font-bold">${p.avgProductivity.toFixed(4)}</p>
+                                                    ${(() => {
+                                                        const target = getKPITarget('productivity');
+                                                        const met = isTargetMet(p.avgProductivity, target);
+                                                        const alert = getAlertStatus(p.avgProductivity, p.productivityStats.ucl, p.productivityStats.lcl, p.productivityStats.stdDev);
+                                                        return `<div class="flex items-center justify-between mt-2">
+                                                            <p class="text-xs ${met ? 'text-green-600' : 'text-red-600'} font-semibold">Target: ${target.label} ${met ? '✓' : '✗'}</p>
+                                                            <div class="flex items-center gap-1"><span class="text-lg">${alert.emoji}</span><span class="text-xs ${alert.textClass} font-semibold">${alert.level}</span></div>
+                                                        </div>`;
+                                                    })()}
+                                                </div>
+                                                <div class="bg-orange-50 p-3 rounded cursor-pointer hover:bg-orange-100 transition" onclick="showChart(${p.id},'effortVariance')">
+                                                    <p class="text-xs text-orange-600 font-semibold">Mean Effort Variance (Click for Chart)</p>
+                                                    <p class="text-2xl font-bold">${p.avgEffortVariance.toFixed(2)}%</p>
+                                                    ${(() => {
+                                                        const target = getKPITarget('effortVariance');
+                                                        const met = isTargetMet(p.avgEffortVariance, target);
+                                                        const alert = getAlertStatus(p.avgEffortVariance, p.effortVarianceStats.ucl, p.effortVarianceStats.lcl, p.effortVarianceStats.stdDev);
+                                                        return `<div class="flex items-center justify-between mt-2">
+                                                            <p class="text-xs ${met ? 'text-green-600' : 'text-red-600'} font-semibold">Target: ${target.label} ${met ? '✓' : '✗'}</p>
+                                                            <div class="flex items-center gap-1"><span class="text-lg">${alert.emoji}</span><span class="text-xs ${alert.textClass} font-semibold">${alert.level}</span></div>
+                                                        </div>`;
+                                                    })()}
+                                                </div>
+                                                <div class="bg-cyan-50 p-3 rounded cursor-pointer hover:bg-cyan-100 transition" onclick="showChart(${p.id},'ontimeIndex')">
+                                                    <p class="text-xs text-cyan-600 font-semibold">Mean Ontime Index (Click for Chart)</p>
+                                                    <p class="text-2xl font-bold">${p.avgOntimeIndex.toFixed(2)}%</p>
+                                                    ${(() => {
+                                                        const target = getKPITarget('ontimeIndex');
+                                                        const met = isTargetMet(p.avgOntimeIndex, target);
+                                                        const alert = getAlertStatus(p.avgOntimeIndex, p.ontimeIndexStats.ucl, p.ontimeIndexStats.lcl, p.ontimeIndexStats.stdDev);
+                                                        return `<div class="flex items-center justify-between mt-2">
+                                                            <p class="text-xs ${met ? 'text-green-600' : 'text-red-600'} font-semibold">Target: ${target.label} ${met ? '✓' : '✗'}</p>
+                                                            <div class="flex items-center gap-1"><span class="text-lg">${alert.emoji}</span><span class="text-xs ${alert.textClass} font-semibold">${alert.level}</span></div>
+                                                        </div>`;
+                                                    })()}
+                                                </div>
+                                            </div>
+                                            `:''}
+                                            ${p.avgDefectRemovalEfficiency!==undefined && p.dreStats && p.dreStats.featureCount>0?`
+                                            <div class="bg-purple-50 p-3 rounded cursor-pointer hover:bg-purple-100 mb-4 transition" onclick="showChart(${p.id},'dre')">
+                                                <p class="text-xs text-purple-600 font-semibold">Mean DRE (Click for Chart)</p>
+                                                <p class="text-2xl font-bold">${p.avgDefectRemovalEfficiency.toFixed(2)}%</p>
+                                                ${(() => {
+                                                    const target = getKPITarget('dre');
+                                                    const met = isTargetMet(p.avgDefectRemovalEfficiency, target);
+                                                    const alert = getAlertStatus(p.avgDefectRemovalEfficiency, p.dreStats.ucl, p.dreStats.lcl, p.dreStats.stdDev);
+                                                    return `<div class="flex items-center justify-between mt-2">
+                                                        <p class="text-xs ${met ? 'text-green-600' : 'text-red-600'} font-semibold">Target: ${target.label} ${met ? '✓' : '✗'}</p>
+                                                        <div class="flex items-center gap-1"><span class="text-lg">${alert.emoji}</span><span class="text-xs ${alert.textClass} font-semibold">${alert.level}</span></div>
+                                                    </div>`;
+                                                })()}
+                                            </div>
+                                            `:''}
+                                            <button onclick="openProject(${p.id})" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Open →</button>
+                                        </div>
+                                    `).join('')}
                                 </div>
-                                ${p.avgProductivity>0?`
-    <div class="grid grid-cols-1 gap-2 mb-4">
-        <div class="bg-green-50 p-3 rounded cursor-pointer hover:bg-green-100 transition" onclick="showChart(${p.id},'productivity')">
-            <p class="text-xs text-green-600 font-semibold">Mean Productivity (Click for Chart)</p>
-            <p class="text-2xl font-bold">${p.avgProductivity.toFixed(4)}</p>
-            ${(() => {
-                const target = getKPITarget('productivity');
-                const met = isTargetMet(p.avgProductivity, target);
-                const alert = getAlertStatus(p.avgProductivity, p.productivityStats.ucl, p.productivityStats.lcl, p.productivityStats.stdDev);
-                return `<div class="flex items-center justify-between mt-2">
-                    <p class="text-xs ${met ? 'text-green-600' : 'text-red-600'} font-semibold">
-                        Target: ${target.label} ${met ? '✓' : '✗'}
-                    </p>
-                    <div class="flex items-center gap-1">
-                        <span class="text-lg">${alert.emoji}</span>
-                        <span class="text-xs ${alert.textClass} font-semibold">${alert.level}</span>
-                    </div>
-                </div>`;
-            })()}
-        </div>
-        
-        <div class="bg-orange-50 p-3 rounded cursor-pointer hover:bg-orange-100 transition" onclick="showChart(${p.id},'effortVariance')">
-            <p class="text-xs text-orange-600 font-semibold">Mean Effort Variance (Click for Chart)</p>
-            <p class="text-2xl font-bold">${p.avgEffortVariance.toFixed(2)}%</p>
-            ${(() => {
-                const target = getKPITarget('effortVariance');
-                const met = isTargetMet(p.avgEffortVariance, target);
-                const alert = getAlertStatus(p.avgEffortVariance, p.effortVarianceStats.ucl, p.effortVarianceStats.lcl, p.effortVarianceStats.stdDev);
-                return `<div class="flex items-center justify-between mt-2">
-                    <p class="text-xs ${met ? 'text-green-600' : 'text-red-600'} font-semibold">
-                        Target: ${target.label} ${met ? '✓' : '✗'}
-                    </p>
-                    <div class="flex items-center gap-1">
-                        <span class="text-lg">${alert.emoji}</span>
-                        <span class="text-xs ${alert.textClass} font-semibold">${alert.level}</span>
-                    </div>
-                </div>`;
-            })()}
-        </div>
-        
-        <div class="bg-cyan-50 p-3 rounded cursor-pointer hover:bg-cyan-100 transition" onclick="showChart(${p.id},'ontimeIndex')">
-            <p class="text-xs text-cyan-600 font-semibold">Mean Ontime Index (Click for Chart)</p>
-            <p class="text-2xl font-bold">${p.avgOntimeIndex.toFixed(2)}%</p>
-            ${(() => {
-                const target = getKPITarget('ontimeIndex');
-                const met = isTargetMet(p.avgOntimeIndex, target);
-                const alert = getAlertStatus(p.avgOntimeIndex, p.ontimeIndexStats.ucl, p.ontimeIndexStats.lcl, p.ontimeIndexStats.stdDev);
-                return `<div class="flex items-center justify-between mt-2">
-                    <p class="text-xs ${met ? 'text-green-600' : 'text-red-600'} font-semibold">
-                        Target: ${target.label} ${met ? '✓' : '✗'}
-                    </p>
-                    <div class="flex items-center gap-1">
-                        <span class="text-lg">${alert.emoji}</span>
-                        <span class="text-xs ${alert.textClass} font-semibold">${alert.level}</span>
-                    </div>
-                </div>`;
-            })()}
-        </div>
-    </div>
-`:''}
-${p.avgDefectRemovalEfficiency!==undefined && p.dreStats && p.dreStats.featureCount>0?`
-    <div class="bg-purple-50 p-3 rounded cursor-pointer hover:bg-purple-100 mb-4 transition" onclick="showChart(${p.id},'dre')">
-        <p class="text-xs text-purple-600 font-semibold">Mean DRE (Click for Chart)</p>
-        <p class="text-2xl font-bold">${p.avgDefectRemovalEfficiency.toFixed(2)}%</p>
-        ${(() => {
-            const target = getKPITarget('dre');
-            const met = isTargetMet(p.avgDefectRemovalEfficiency, target);
-            const alert = getAlertStatus(p.avgDefectRemovalEfficiency, p.dreStats.ucl, p.dreStats.lcl, p.dreStats.stdDev);
-            return `<div class="flex items-center justify-between mt-2">
-                <p class="text-xs ${met ? 'text-green-600' : 'text-red-600'} font-semibold">
-                    Target: ${target.label} ${met ? '✓' : '✗'}
-                </p>
-                <div class="flex items-center gap-1">
-                    <span class="text-lg">${alert.emoji}</span>
-                    <span class="text-xs ${alert.textClass} font-semibold">${alert.level}</span>
-                </div>
-            </div>`;
-        })()}
-    </div>
-`:''}
-                                <button onclick="openProject(${p.id})" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Open →</button>
+                            `;
+                        }).join('');
+
+                        return `
+                            <div class="flex gap-4 items-start">
+                                <div class="flex-1 min-w-0">
+                                    ${filterLabelHtml}
+                                    ${sectionsHtml}
+                                </div>
+                                ${sidebarHtml}
                             </div>
-                        `).join('')}
-                    </div>
+                        `;
+                    })()}
                 </div>`;
         }
         
@@ -1294,6 +1466,488 @@ function showChart(projectId, type) {
 }
 
         
+        function openOrganizational() {
+            orgFilter = null; orgCustomStart = null; orgCustomEnd = null;
+            orgProjects = []; orgSelectedIds = []; orgResultsVisible = false;
+            ['orgProdChart','orgEffortChart','orgOntimeChart','orgDreChart'].forEach(id => {
+                if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+            });
+            currentPage = 'organizational';
+            loadOrgProjects();
+        }
+
+        function getOrgFilterDates(f) {
+            if (!f) return null;
+            if (f === 'custom') return (orgCustomStart && orgCustomEnd) ? { start: orgCustomStart, end: orgCustomEnd } : null;
+            const now = new Date(), y = now.getFullYear(), m = now.getMonth();
+            const mb = f === '3months' ? 2 : f === '6months' ? 5 : 11;
+            const sd = new Date(y, m - mb, 1);
+            const ed = new Date(y, m + 1, 0);
+            return {
+                start: `${sd.getFullYear()}-${String(sd.getMonth()+1).padStart(2,'0')}-01`,
+                end:   `${ed.getFullYear()}-${String(ed.getMonth()+1).padStart(2,'0')}-${String(ed.getDate()).padStart(2,'0')}`
+            };
+        }
+
+        async function loadOrgProjects() {
+            let url = 'api/projects.php';
+            const fd = getOrgFilterDates(orgFilter);
+            if (fd) url += `?filterStartDate=${fd.start}&filterEndDate=${fd.end}`;
+            const r = await fetch(url);
+            orgProjects = await r.json();
+            orgSelectedIds = [];
+            orgResultsVisible = false;
+            ['orgProdChart','orgEffortChart','orgOntimeChart','orgDreChart'].forEach(id => {
+                if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+            });
+            renderOrganizational();
+        }
+
+        function setOrgFilter(f) {
+            if (f === 'custom') {
+                // The orgCustomModal is inside the rendered page — open it
+                const om = document.getElementById('orgCustomModal');
+                if (om) { om.style.display = 'flex'; }
+                return;
+            }
+            orgFilter = f;
+            loadOrgProjects();
+        }
+
+        function applyOrgCustomDate() {
+            const s = document.getElementById('orgCustomStart').value;
+            const e = document.getElementById('orgCustomEnd').value;
+            if (!s || !e) { alert('Please select both dates'); return; }
+            if (s > e) { alert('Start date must be before end date'); return; }
+            orgCustomStart = s; orgCustomEnd = e; orgFilter = 'custom';
+            const om = document.getElementById('orgCustomModal');
+            if (om) om.style.display = 'none';
+            loadOrgProjects();
+        }
+
+        function toggleOrgProject(id) {
+            const idx = orgSelectedIds.indexOf(id);
+            if (idx === -1) orgSelectedIds.push(id);
+            else orgSelectedIds.splice(idx, 1);
+            // Update checkbox UI without full re-render
+            const cb = document.getElementById('orgcb_' + id);
+            const row = document.getElementById('orgrow_' + id);
+            if (cb && row) {
+                cb.checked = orgSelectedIds.includes(id);
+                row.classList.toggle('bg-purple-50', orgSelectedIds.includes(id));
+                row.classList.toggle('border-purple-300', orgSelectedIds.includes(id));
+            }
+            document.getElementById('orgSelectCount').textContent = orgSelectedIds.length;
+            document.getElementById('orgSubmitBtn').disabled = orgSelectedIds.length === 0;
+        }
+
+        function toggleAllOrgProjects() {
+            if (orgSelectedIds.length === orgProjects.length) {
+                orgSelectedIds = [];
+            } else {
+                orgSelectedIds = orgProjects.map(p => p.id);
+            }
+            renderOrganizational();
+        }
+
+        function submitOrgSelection() {
+            if (!orgSelectedIds.length) { alert('Please select at least one project'); return; }
+            orgResultsVisible = true;
+            renderOrganizational();
+            // Give DOM time to paint then draw charts
+            setTimeout(drawOrgCharts, 100);
+        }
+
+        function calcOrgStats(values) {
+            const n = values.length;
+            if (n === 0) return null;
+            const mean = values.reduce((a,b) => a+b, 0) / n;
+            const stdDev = Math.sqrt(values.reduce((s,v) => s + Math.pow(v - mean, 2), 0) / n);
+            return { mean, stdDev, ucl: mean + 3*stdDev, lcl: mean - 3*stdDev, n };
+        }
+
+        function drawOrgCharts() {
+            const selected = orgProjects.filter(p => orgSelectedIds.includes(p.id));
+            const fd = getOrgFilterDates(orgFilter);
+            const periodText = fd ? ` (${fd.start} to ${fd.end})` : ' (All Time)';
+
+            // Each chart def maps to a project-level KPI mean field
+            const chartDefs = [
+                {
+                    key: 'productivity', canvasId: 'orgProdChart', chartKey: 'orgProdChart',
+                    label: 'Productivity', ylabel: 'Mean Productivity',
+                    getMean: p => (p.avgProductivity > 0 ? p.avgProductivity : null),
+                    toFixed: 4, pct: false, kpiType: 'productivity'
+                },
+                {
+                    key: 'effortVariance', canvasId: 'orgEffortChart', chartKey: 'orgEffortChart',
+                    label: 'Effort Variance', ylabel: 'Mean Effort Variance (%)',
+                    getMean: p => (p.avgEffortVariance !== undefined && p.avgEffortVariance !== null && p.avgProductivity > 0 ? p.avgEffortVariance : null),
+                    toFixed: 2, pct: true, kpiType: 'effortVariance'
+                },
+                {
+                    key: 'ontimeIndex', canvasId: 'orgOntimeChart', chartKey: 'orgOntimeChart',
+                    label: 'Ontime Index', ylabel: 'Mean Ontime Index (%)',
+                    getMean: p => (p.avgOntimeIndex !== undefined && p.avgOntimeIndex !== null && p.avgProductivity > 0 ? p.avgOntimeIndex : null),
+                    toFixed: 2, pct: true, kpiType: 'ontimeIndex'
+                },
+                {
+                    key: 'dre', canvasId: 'orgDreChart', chartKey: 'orgDreChart',
+                    label: 'Defect Removal Efficiency', ylabel: 'Mean DRE (%)',
+                    getMean: p => (p.avgDefectRemovalEfficiency !== undefined && p.dreStats && p.dreStats.featureCount > 0 ? p.avgDefectRemovalEfficiency : null),
+                    toFixed: 2, pct: true, kpiType: 'dre'
+                }
+            ];
+
+            chartDefs.forEach(def => {
+                // Build one point per project using that project's KPI mean
+                const points = [];
+                selected.forEach(p => {
+                    const val = def.getMean(p);
+                    if (val !== null && val !== undefined && !isNaN(val)) {
+                        points.push({ label: p.name, value: val });
+                    }
+                });
+
+                const panelEl = document.getElementById('orgStats_' + def.key);
+
+                if (points.length === 0) {
+                    if (panelEl) panelEl.innerHTML = `<p class="text-sm text-gray-400 italic">No KPI data available for the selected projects.</p>`;
+                    return;
+                }
+
+                // ── Recalculate all stats from the project-mean values ──────────────
+                const values   = points.map(p => p.value);
+                const n        = values.length;
+                const mean     = values.reduce((a, b) => a + b, 0) / n;
+                const stdDev   = Math.sqrt(values.reduce((s, v) => s + Math.pow(v - mean, 2), 0) / n);
+                const ucl      = mean + 3 * stdDev;
+                const lcl      = mean - 3 * stdDev;
+                const oneSigU  = mean + stdDev;
+                const oneSigL  = mean - stdDev;
+                const twoSigU  = mean + 2 * stdDev;
+                const twoSigL  = mean - 2 * stdDev;
+
+                const target    = getKPITarget(def.kpiType);
+                const alertStat = getAlertStatus(mean, ucl, lcl, stdDev);
+                const targetMet = isTargetMet(mean, target);
+                const fmt       = v => def.pct ? v.toFixed(def.toFixed) + '%' : v.toFixed(def.toFixed);
+
+                // Per-project status row (tooltip data)
+                const projectStatusRows = points.map(pt => {
+                    const z  = getSigmaZone(pt.value, mean, stdDev);
+                    const tm = isTargetMet(pt.value, target);
+                    return `<tr class="border-b border-gray-100">
+                        <td class="py-1 pr-4 text-sm font-medium text-gray-800">${pt.label}</td>
+                        <td class="py-1 pr-4 text-sm font-bold text-blue-700 text-right">${fmt(pt.value)}</td>
+                        <td class="py-1 pr-4 text-sm text-center">${z.stability}</td>
+                        <td class="py-1 text-sm font-semibold text-center ${tm ? 'text-green-600' : 'text-red-600'}">${tm ? '✓' : '✗'}</td>
+                    </tr>`;
+                }).join('');
+
+                // ── Stats panel ─────────────────────────────────────────────────────
+                if (panelEl) {
+                    panelEl.innerHTML = `
+                        <div class="grid grid-cols-3 md:grid-cols-6 gap-3 mb-4">
+                            <div class="bg-blue-50 p-3 rounded text-center">
+                                <p class="text-xs font-semibold text-gray-500">Org Mean</p>
+                                <p class="text-lg font-bold text-blue-700">${fmt(mean)}</p>
+                                <p class="text-xs text-gray-400">${n} project${n !== 1 ? 's' : ''}</p>
+                            </div>
+                            <div class="bg-red-50 p-3 rounded text-center">
+                                <p class="text-xs font-semibold text-gray-500">UCL (+3σ)</p>
+                                <p class="text-lg font-bold text-red-600">${fmt(ucl)}</p>
+                            </div>
+                            <div class="bg-green-50 p-3 rounded text-center">
+                                <p class="text-xs font-semibold text-gray-500">LCL (−3σ)</p>
+                                <p class="text-lg font-bold text-green-600">${fmt(Math.max(0, lcl))}</p>
+                            </div>
+                            <div class="bg-yellow-50 p-3 rounded text-center">
+                                <p class="text-xs font-semibold text-gray-500">Std Dev (σ)</p>
+                                <p class="text-lg font-bold text-yellow-700">${fmt(stdDev)}</p>
+                            </div>
+                            <div class="bg-indigo-50 p-3 rounded text-center">
+                                <p class="text-xs font-semibold text-gray-500">Target</p>
+                                <p class="text-sm font-bold text-indigo-700">${target.label}</p>
+                                <p class="text-xs mt-1 font-semibold ${targetMet ? 'text-green-600' : 'text-red-600'}">${targetMet ? '✓ Met' : '✗ Not Met'}</p>
+                            </div>
+                            <div class="${alertStat.bgClass} p-3 rounded text-center">
+                                <p class="text-xs font-semibold text-gray-500">Alert</p>
+                                <p class="text-2xl">${alertStat.emoji}</p>
+                                <p class="text-xs font-bold ${alertStat.textClass}">${alertStat.description}</p>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-3 mb-3">
+                            <p class="text-xs font-semibold text-gray-500 mb-2">Status: <span class="font-bold ${alertStat.textClass}">${alertStat.description}</span> · Zone: <span class="font-bold">${alertStat.zone}</span> · Target: <span class="font-bold ${targetMet ? 'text-green-600' : 'text-red-600'}">${targetMet ? 'Met ✓' : 'Not Met ✗'}</span></p>
+                            <table class="w-full">
+                                <thead><tr class="border-b-2 border-gray-200">
+                                    <th class="py-1 pr-4 text-left text-xs text-gray-500 font-semibold">Project</th>
+                                    <th class="py-1 pr-4 text-right text-xs text-gray-500 font-semibold">KPI Mean</th>
+                                    <th class="py-1 pr-4 text-center text-xs text-gray-500 font-semibold">Zone</th>
+                                    <th class="py-1 text-center text-xs text-gray-500 font-semibold">Target</th>
+                                </tr></thead>
+                                <tbody>${projectStatusRows}</tbody>
+                            </table>
+                        </div>`;
+                }
+
+                // ── Draw chart ──────────────────────────────────────────────────────
+                const canvas = document.getElementById(def.canvasId);
+                if (!canvas) return;
+                if (charts[def.chartKey]) { charts[def.chartKey].destroy(); }
+
+                const labels = points.map(p => p.label);
+                const fill   = v => new Array(values.length).fill(v);
+
+                const pointBg = values.map(v => {
+                    const z = getSigmaZone(v, mean, stdDev);
+                    return z.color === 'green' ? 'rgba(34,197,94,0.85)' : z.color === 'red' ? 'rgba(239,68,68,0.85)' : 'rgba(251,191,36,0.85)';
+                });
+                const pointBorder = values.map(v => {
+                    const z = getSigmaZone(v, mean, stdDev);
+                    return z.color === 'green' ? 'rgb(34,197,94)' : z.color === 'red' ? 'rgb(239,68,68)' : 'rgb(251,191,36)';
+                });
+
+                charts[def.chartKey] = new Chart(canvas.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label: `Project Mean ${def.label}`,
+                                data: values,
+                                borderColor: 'rgba(100,116,139,0.4)',
+                                borderWidth: 2,
+                                pointRadius: 8,
+                                pointHoverRadius: 10,
+                                pointBorderWidth: 2,
+                                pointBackgroundColor: pointBg,
+                                pointBorderColor: pointBorder,
+                                fill: false, order: 1, tension: 0.1
+                            },
+                            { label: 'Org Mean (Centerline)', data: fill(mean), borderColor: 'rgb(34,197,94)', borderDash: [5,5], borderWidth: 2.5, pointRadius: 0, fill: false, order: 2 },
+                            { label: `+1σ (${fmt(oneSigU)})`, data: fill(oneSigU), borderColor: 'rgb(34,197,94)', borderDash: [8,4], borderWidth: 1.5, pointRadius: 0, fill: false, order: 3 },
+                            { label: `-1σ (${fmt(Math.max(0,oneSigL))})`, data: fill(Math.max(0,oneSigL)), borderColor: 'rgb(34,197,94)', borderDash: [8,4], borderWidth: 1.5, pointRadius: 0, fill: false, order: 4 },
+                            { label: `+2σ (${fmt(twoSigU)})`, data: fill(twoSigU), borderColor: 'rgb(251,191,36)', borderDash: [5,5], borderWidth: 1.5, pointRadius: 0, fill: false, order: 5 },
+                            { label: `-2σ (${fmt(Math.max(0,twoSigL))})`, data: fill(Math.max(0,twoSigL)), borderColor: 'rgb(251,191,36)', borderDash: [5,5], borderWidth: 1.5, pointRadius: 0, fill: false, order: 6 },
+                            { label: `UCL +3σ (${fmt(ucl)})`, data: fill(ucl), borderColor: 'rgb(239,68,68)', borderDash: [10,5], borderWidth: 2, pointRadius: 0, fill: false, order: 7 },
+                            { label: `LCL -3σ (${fmt(Math.max(0,lcl))})`, data: fill(Math.max(0,lcl)), borderColor: 'rgb(239,68,68)', borderDash: [10,5], borderWidth: 2, pointRadius: 0, fill: false, order: 8 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `Organizational ${def.label} — Project Mean Control Chart${periodText}`,
+                                font: { size: 14, weight: 'bold' }
+                            },
+                            subtitle: {
+                                display: true,
+                                text: '🟢 Within ±1σ (Stable)  |  🟡 Between 1σ–3σ (Warning)  |  🔴 Beyond ±3σ (Out of Control)',
+                                font: { size: 10 }, color: '#6B7280'
+                            },
+                            legend: {
+                                display: true, position: 'bottom',
+                                labels: { usePointStyle: false, padding: 8, font: { size: 10 } }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    title: ctx => ctx[0]?.label || '',
+                                    label: ctx => {
+                                        if (ctx.datasetIndex === 0) {
+                                            return ` ${def.label}: ${fmt(ctx.parsed.y)}`;
+                                        }
+                                        return ` ${ctx.dataset.label}`;
+                                    },
+                                    afterLabel: ctx => {
+                                        if (ctx.datasetIndex === 0) {
+                                            const v  = ctx.parsed.y;
+                                            const z  = getSigmaZone(v, mean, stdDev);
+                                            const tm = isTargetMet(v, target);
+                                            return [
+                                                `Zone: ${z.zone}`,
+                                                `Status: ${z.stability}`,
+                                                `Sigma distance: ${z.sigmaValue}σ`,
+                                                `Target (${target.label}): ${tm ? '✓ Met' : '✗ Not Met'}`
+                                            ];
+                                        }
+                                        return '';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: { display: true, text: def.ylabel },
+                                grid: {
+                                    color: ctx => {
+                                        const v = ctx.tick.value;
+                                        if (v >= Math.max(0,oneSigL) && v <= oneSigU) return 'rgba(34,197,94,0.08)';
+                                        if ((v > oneSigU && v <= ucl) || (v < oneSigL && v >= lcl)) return 'rgba(251,191,36,0.05)';
+                                        return 'rgba(0,0,0,0.1)';
+                                    }
+                                }
+                            },
+                            x: {
+                                title: { display: true, text: 'Projects' },
+                                ticks: { maxRotation: 40, font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        function renderOrganizational() {
+            const fd = getOrgFilterDates(orgFilter);
+            const flabel = orgFilter === '3months' ? 'Last 3 Months' : orgFilter === '6months' ? 'Last 6 Months' : orgFilter === '12months' ? 'Last 12 Months' : orgFilter === 'custom' ? 'Custom Range' : 'All Time';
+            const allSelected = orgProjects.length > 0 && orgSelectedIds.length === orgProjects.length;
+
+            document.getElementById('app').innerHTML = `
+            <div class="container mx-auto p-6">
+                <!-- Header -->
+                <div class="flex items-center gap-4 mb-6">
+                    <button onclick="currentPage='dashboard';render()" class="px-4 py-2 bg-white rounded-lg shadow hover:shadow-md transition flex items-center gap-2">← Back</button>
+                    <div>
+                        <h1 class="text-3xl font-bold text-purple-700">🏢 Organizational KPI View</h1>
+                        <p class="text-sm text-gray-500 mt-1">Select a date range and projects to compare organizational performance across all 4 KPIs</p>
+                    </div>
+                </div>
+
+                <!-- Step 1: Date Filter -->
+                <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-content font-bold text-sm flex items-center justify-center">1</div>
+                        <h3 class="text-lg font-bold">Select Date Range</h3>
+                        ${fd ? `<span class="ml-2 text-sm text-purple-700 font-semibold bg-purple-50 px-3 py-1 rounded-full">${fd.start} → ${fd.end}</span>` : ''}
+                    </div>
+                    <div class="flex gap-3 flex-wrap">
+                        <button onclick="setOrgFilter('3months')" class="px-5 py-2.5 rounded-lg border-2 border-indigo-200 hover:bg-indigo-50 transition font-medium text-sm ${orgFilter === '3months' ? 'filter-active' : 'bg-white'}">Last 3 Months</button>
+                        <button onclick="setOrgFilter('6months')" class="px-5 py-2.5 rounded-lg border-2 border-indigo-200 hover:bg-indigo-50 transition font-medium text-sm ${orgFilter === '6months' ? 'filter-active' : 'bg-white'}">Last 6 Months</button>
+                        <button onclick="setOrgFilter('12months')" class="px-5 py-2.5 rounded-lg border-2 border-indigo-200 hover:bg-indigo-50 transition font-medium text-sm ${orgFilter === '12months' ? 'filter-active' : 'bg-white'}">Last 12 Months</button>
+                        <button onclick="setOrgFilter('custom')" class="px-5 py-2.5 rounded-lg border-2 border-purple-200 hover:bg-purple-50 transition font-medium text-sm ${orgFilter === 'custom' ? 'filter-active' : 'bg-white'}">📆 Custom Range</button>
+                        <button onclick="orgFilter=null;orgCustomStart=null;orgCustomEnd=null;loadOrgProjects()" class="px-5 py-2.5 rounded-lg border-2 border-gray-200 hover:bg-gray-50 transition font-medium text-sm ${!orgFilter ? 'bg-gray-100 font-semibold' : 'bg-white'}">🔄 All Time</button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Project Selection -->
+                <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">2</div>
+                            <h3 class="text-lg font-bold">Select Projects</h3>
+                            ${orgProjects.length > 0 ? `<span class="text-sm text-gray-500">${orgProjects.length} project${orgProjects.length !== 1 ? 's' : ''} available</span>` : ''}
+                        </div>
+                        ${orgProjects.length > 0 ? `
+                        <button onclick="toggleAllOrgProjects()" class="px-4 py-2 text-sm rounded-lg border-2 border-purple-200 hover:bg-purple-50 transition font-semibold text-purple-700">
+                            ${allSelected ? '☐ Deselect All' : '☑ Select All'}
+                        </button>` : ''}
+                    </div>
+
+                    ${orgProjects.length === 0 ? `
+                    <div class="text-center py-10 text-gray-400">
+                        <p class="text-4xl mb-3">📂</p>
+                        <p class="font-semibold">No projects found for this period.</p>
+                        <p class="text-sm mt-1">Try selecting a different date range or "All Time".</p>
+                    </div>` : `
+                    <div class="space-y-2 max-h-80 overflow-y-auto pr-1">
+                        ${orgProjects.map(p => {
+                            const selected = orgSelectedIds.includes(p.id);
+                            const hasKpi = p.avgProductivity > 0;
+                            return `
+                            <div id="orgrow_${p.id}" onclick="toggleOrgProject(${p.id})" class="flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition select-none
+                                ${selected ? 'bg-purple-50 border-purple-300' : 'bg-gray-50 border-gray-200 hover:border-purple-200 hover:bg-purple-50/40'}">
+                                <input type="checkbox" id="orgcb_${p.id}" ${selected ? 'checked' : ''} onclick="event.stopPropagation();toggleOrgProject(${p.id})"
+                                    class="w-5 h-5 rounded accent-purple-600 cursor-pointer flex-shrink-0">
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-bold text-gray-800 truncate">${p.name}</p>
+                                    <p class="text-xs text-gray-500 truncate">${p.description || 'No description'}</p>
+                                </div>
+                                <div class="flex gap-3 text-xs flex-shrink-0">
+                                    <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded font-semibold">${p.featureCount} features</span>
+                                    ${hasKpi ? `
+                                    <span class="bg-green-100 text-green-700 px-2 py-1 rounded font-semibold">Prod: ${p.avgProductivity.toFixed(2)}</span>
+                                    <span class="bg-orange-100 text-orange-700 px-2 py-1 rounded font-semibold">EV: ${p.avgEffortVariance.toFixed(1)}%</span>
+                                    ` : `<span class="bg-gray-100 text-gray-500 px-2 py-1 rounded">No KPI data</span>`}
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>`}
+                </div>
+
+                <!-- Submit -->
+                ${orgProjects.length > 0 ? `
+                <div class="flex items-center gap-4 mb-8">
+                    <button id="orgSubmitBtn" onclick="submitOrgSelection()" ${orgSelectedIds.length === 0 ? 'disabled' : ''}
+                        class="px-8 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-bold text-lg shadow-lg transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2">
+                        📊 Generate KPI Report
+                    </button>
+                    <span class="text-sm text-gray-500"><strong id="orgSelectCount">${orgSelectedIds.length}</strong> project${orgSelectedIds.length !== 1 ? 's' : ''} selected</span>
+                </div>` : ''}
+
+                <!-- Step 3: KPI Results -->
+                ${orgResultsVisible && orgSelectedIds.length > 0 ? `
+                <div class="fade-in">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">3</div>
+                        <h3 class="text-lg font-bold">Organizational KPI Control Charts</h3>
+                        <span class="text-sm text-purple-700 bg-purple-50 px-3 py-1 rounded-full font-semibold">
+                            ${orgSelectedIds.length} project${orgSelectedIds.length !== 1 ? 's' : ''} · ${flabel}
+                        </span>
+                    </div>
+                    <div class="text-xs text-gray-500 mb-6 bg-gray-50 p-3 rounded-lg">
+                        🟢 <strong>Green points</strong> = within ±1σ (stable) &nbsp;|&nbsp;
+                        🟡 <strong>Yellow points</strong> = between 1σ–3σ (warning) &nbsp;|&nbsp;
+                        🔴 <strong>Red points</strong> = beyond ±3σ (out of control)
+                    </div>
+
+                    ${[
+                        { key: 'productivity', icon: '⚡', color: 'green', title: 'Productivity', canvasId: 'orgProdChart' },
+                        { key: 'effortVariance', icon: '📐', color: 'orange', title: 'Effort Variance', canvasId: 'orgEffortChart' },
+                        { key: 'ontimeIndex', icon: '⏰', color: 'cyan', title: 'Ontime Index', canvasId: 'orgOntimeChart' },
+                        { key: 'dre', icon: '🔍', color: 'purple', title: 'Defect Removal Efficiency', canvasId: 'orgDreChart' }
+                    ].map(kpi => `
+                    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="text-2xl">${kpi.icon}</span>
+                            <h4 class="text-xl font-bold">${kpi.title}</h4>
+                        </div>
+                        <div id="orgStats_${kpi.key}" class="mb-4">
+                            <div class="flex items-center gap-2 text-gray-400 text-sm"><div class="w-4 h-4 border-2 border-gray-300 rounded-full animate-spin border-t-purple-600"></div> Calculating...</div>
+                        </div>
+                        <canvas id="${kpi.canvasId}"></canvas>
+                    </div>`).join('')}
+                </div>` : ''}
+            </div>
+
+            <!-- Org Custom Date Modal -->
+            <div id="orgCustomModal" style="display:none;position:fixed;z-index:1001;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;" class="flex-col">
+                <div style="background:white;padding:24px;border-radius:12px;width:100%;max-width:400px;">
+                    <div class="flex justify-between items-center mb-5">
+                        <h2 class="text-xl font-bold">📆 Select Date Range</h2>
+                        <button onclick="document.getElementById('orgCustomModal').style.display='none'" class="text-2xl hover:text-red-600">&times;</button>
+                    </div>
+                    <div class="space-y-4 mb-5">
+                        <div><label class="block text-sm font-semibold mb-1">Start Date</label>
+                        <input type="date" id="orgCustomStart" value="${orgCustomStart || ''}" class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"></div>
+                        <div><label class="block text-sm font-semibold mb-1">End Date</label>
+                        <input type="date" id="orgCustomEnd" value="${orgCustomEnd || ''}" class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"></div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="applyOrgCustomDate()" class="flex-1 px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold">Apply</button>
+                        <button onclick="document.getElementById('orgCustomModal').style.display='none'" class="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancel</button>
+                    </div>
+                </div>
+            </div>`;
+
+            // Show org custom modal properly after render
+            const om = document.getElementById('orgCustomModal');
+            if (om) om.style.display = 'none';
+        }
+
         function closeChartModal(id){
             document.getElementById(id).classList.remove('active');
             // Find and destroy the chart inside this modal
