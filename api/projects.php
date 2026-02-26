@@ -223,8 +223,28 @@ try {
                 $featureCount++;
             }
             
-            // Skip project if no features with data
+            // No features with KPI data — still include the project
+            // so it appears in the dashboard (and the A-Z navigator)
+            // but with zeroed-out metrics.
             if ($featureCount == 0) {
+                $projects[] = [
+                    'id'               => (int)$p['id'],
+                    'name'             => $p['name'],
+                    'description'      => $p['description'],
+                    'featureCount'     => (int)$p['feature_count'],
+                    'totalStoryPoints' => (float)($p['total_story_points'] ?? 0),
+                    'latestFeatureDate'=> $p['latest_feature_date'],
+                    'avgProductivity'  => 0,
+                    'avgEffortVariance'=> 0,
+                    'avgOntimeIndex'   => 0,
+                    'avgDefectRemovalEfficiency' => 0,
+                    'productivityStats'   => ['mean'=>0,'ucl'=>0,'lcl'=>0,'stdDev'=>0,'features'=>[]],
+                    'effortVarianceStats' => ['mean'=>0,'ucl'=>0,'lcl'=>0,'stdDev'=>0,'features'=>[]],
+                    'ontimeIndexStats'    => ['mean'=>0,'ucl'=>0,'lcl'=>0,'stdDev'=>0,'features'=>[]],
+                    'dreStats'            => ['mean'=>0,'ucl'=>0,'lcl'=>0,'stdDev'=>0,'featureCount'=>0,'features'=>[]],
+                    'filterMode'       => $filterMode,
+                    'created_at'       => $p['created_at']
+                ];
                 continue;
             }
             
