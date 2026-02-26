@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADO → Sprint Estimator Mapper</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f1f5f9; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; letter-spacing:.5px; }
+  .badge-ado  { background:#0078d4; color:#fff; }
+  .badge-se   { background:#7c3aed; color:#fff; }
+  .badge-manual { background:#f59e0b; color:#fff; }
+  .badge-derived { background:#10b981; color:#fff; }
+  .map-row:nth-child(even) { background:#f8fafc; }
+  .map-row:hover { background:#ede9fe; }
+  .tab-btn { transition: all .2s; border-bottom: 3px solid transparent; }
+  .tab-btn.active { border-bottom-color: #7c3aed; color: #7c3aed; font-weight:700; }
+  pre { white-space: pre-wrap; word-break: break-all; }
+  textarea { font-family: 'Courier New', monospace; font-size:12px; }
+  .section-header { background: linear-gradient(135deg,#7c3aed,#0078d4); color:#fff; border-radius:12px; padding:18px 24px; margin-bottom:20px; }
+</style>
+</head>
+<body>
+
+<div class="max-w-6xl mx-auto p-6">
+
+  <!-- Header -->
+  <div class="section-header flex items-center gap-4 mb-8">
+    <div>
+      <h1 class="text-2xl font-bold mb-1">Azure DevOps → Sprint Estimator V4</h1>
+      <p class="text-blue-100 text-sm">Field Mapper, Template Generator &amp; Live CSV Converter</p>
+    </div>
+    <div class="ml-auto flex gap-2 flex-wrap">
+      <span class="badge badge-ado">ADO Field</span>
+      <span class="badge badge-se">SE Field</span>
+      <span class="badge badge-manual">Manual Input</span>
+      <span class="badge badge-derived">Auto-Derived</span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex gap-0 mb-6 border-b-2 border-gray-200 bg-white rounded-t-xl px-4">
+    <button class="tab-btn active px-6 py-3 text-sm" onclick="showTab('mapping',this)">📋 Field Mapping</button>
+    <button class="tab-btn px-6 py-3 text-sm" onclick="showTab('template',this)">⬇ Templates</button>
+    <button class="tab-btn px-6 py-3 text-sm" onclick="showTab('converter',this)">🔄 Live Converter</button>
+    <button class="tab-btn px-6 py-3 text-sm" onclick="showTab('guide',this)">📖 Export Guide</button>
+  </div>
+
+  <!-- TAB: FIELD MAPPING -->
+  <div id="tab-mapping" class="tab-panel">
+    <div class="bg-white rounded-xl shadow p-6 mb-6">
+      <h2 class="text-lg font-bold mb-4">Complete Field Mapping Reference</h2>
+      <p class="text-sm text-gray-500 mb-5">
+        This table maps every Sprint Estimator V4 column to its Azure DevOps equivalent.
+        <strong>ADO Hierarchy:</strong> Team Project → Epic / Feature → User Story → Task
+      </p>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-100 text-left">
+              <th class="px-4 py-3 font-semibold">#</th>
+              <th class="px-4 py-3 font-semibold">Sprint Estimator Column</th>
+              <th class="px-4 py-3 font-semibold">ADO Export Field</th>
+              <th class="px-4 py-3 font-semibold">ADO Work Item Type</th>
+              <th class="px-4 py-3 font-semibold">Notes</th>
+            </tr>
+          </thead>
+          <tbody id="mapTable">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-5">
+        <h3 class="font-bold text-yellow-800 mb-3">⚠ Fields Requiring Manual Input After Import</h3>
+        <ul class="text-sm text-yellow-700 space-y-2">
+          <li><strong>Org Productivity</strong> — Organization-specific value (e.g. 1.5–2.5); not tracked in ADO</li>
+          <li><strong>Man Days Hours</strong> — Your team's hours/day (e.g. 7 or 8); not tracked in ADO</li>
+          <li><strong>SIT Defects</strong> — Count of bugs found in System Integration Testing; pull from ADO Bug query</li>
+          <li><strong>UAT Defects</strong> — Count of bugs found in UAT; pull from ADO Bug query</li>
+          <li><strong>Actual Req / Design / Testing / PM MD</strong> — Phase effort breakdowns not captured per-story in ADO</li>
+        </ul>
+      </div>
+      <div class="bg-green-50 border border-green-200 rounded-xl p-5">
+        <h3 class="font-bold text-green-800 mb-3">✅ Fields Auto-Derived From ADO Data</h3>
+        <ul class="text-sm text-green-700 space-y-2">
+          <li><strong>Feature Start Date</strong> — Min of child User Story "Start Date"</li>
+          <li><strong>Feature End Date</strong> — Max of child User Story "Target Date"</li>
+          <li><strong>Is Completed</strong> — State = "Done" or "Closed" or "Resolved" → TRUE</li>
+          <li><strong>Story Man Days</strong> — Original Estimate ÷ Man Days Hours (calculated by SE)</li>
+          <li><strong>Story Points</strong> — Story Man Days × Org Productivity (calculated by SE)</li>
+          <li><strong>DRE</strong> — SIT ÷ (SIT + UAT) × 100 (calculated by SE)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: TEMPLATES -->
+  <div id="tab-template" class="tab-panel hidden">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+
+      <!-- ADO Export Template -->
+      <div class="bg-white rounded-xl shadow p-6 border-t-4 border-blue-500">
+        <div class="text-3xl mb-3">🔵</div>
+        <h3 class="font-bold text-lg mb-2">ADO Export Columns Template</h3>
+        <p class="text-sm text-gray-600 mb-4">CSV with Azure DevOps field names as headers. Fill this from your ADO query export.</p>
+        <ul class="text-xs text-gray-500 mb-4 space-y-1">
+          <li>✓ Uses exact ADO column names</li>
+          <li>✓ Supports Epic → Feature → Story hierarchy</li>
+          <li>✓ Includes sample data (2 projects, 3 features, 7 stories)</li>
+        </ul>
+        <button onclick="downloadADOTemplate()" class="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold text-sm">⬇ Download ADO Template</button>
+      </div>
+
+      <!-- Sprint Estimator Ready Template -->
+      <div class="bg-white rounded-xl shadow p-6 border-t-4 border-purple-500">
+        <div class="text-3xl mb-3">🟣</div>
+        <h3 class="font-bold text-lg mb-2">Sprint Estimator Ready Template</h3>
+        <p class="text-sm text-gray-600 mb-4">Pre-converted CSV in Sprint Estimator format using the same sample data as the ADO template.</p>
+        <ul class="text-xs text-gray-500 mb-4 space-y-1">
+          <li>✓ 21-column Sprint Estimator format</li>
+          <li>✓ Ready to upload directly to SE V4</li>
+          <li>✓ Same sample data for easy comparison</li>
+        </ul>
+        <button onclick="downloadSETemplate()" class="w-full px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold text-sm">⬇ Download SE Template</button>
+      </div>
+
+      <!-- Mapping Reference Sheet -->
+      <div class="bg-white rounded-xl shadow p-6 border-t-4 border-green-500">
+        <div class="text-3xl mb-3">🟢</div>
+        <h3 class="font-bold text-lg mb-2">Mapping Reference Sheet</h3>
+        <p class="text-sm text-gray-600 mb-4">Standalone CSV showing the side-by-side field mapping for easy reference.</p>
+        <ul class="text-xs text-gray-500 mb-4 space-y-1">
+          <li>✓ ADO field name ↔ SE field name</li>
+          <li>✓ Source type (auto/manual/derived)</li>
+          <li>✓ Transformation notes</li>
+        </ul>
+        <button onclick="downloadMappingSheet()" class="w-full px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-sm">⬇ Download Mapping Sheet</button>
+      </div>
+    </div>
+
+    <!-- Sample Data Preview -->
+    <div class="bg-white rounded-xl shadow p-6">
+      <h3 class="font-bold mb-4">📄 Sample Data Preview — ADO Format</h3>
+      <div class="overflow-x-auto">
+        <table id="previewTable" class="text-xs w-full border-collapse"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: LIVE CONVERTER -->
+  <div id="tab-converter" class="tab-panel hidden">
+    <div class="bg-white rounded-xl shadow p-6 mb-6">
+      <h2 class="text-lg font-bold mb-2">🔄 ADO Export → Sprint Estimator Converter</h2>
+      <p class="text-sm text-gray-500 mb-5">Paste your Azure DevOps CSV export below (or use the ADO template as input). The tool will convert it to Sprint Estimator format automatically.</p>
+
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1">Org Productivity (default for all features)</label>
+          <input type="number" id="defaultOrgProd" value="2" step="0.1" min="0.1" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-400 focus:outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Man Days Hours (hours per work day)</label>
+          <input type="number" id="defaultMDH" value="8" step="0.5" min="1" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-400 focus:outline-none text-sm">
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-sm font-semibold mb-1">Paste ADO CSV export here:</label>
+        <textarea id="adoInput" rows="10" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-400 focus:outline-none"
+          placeholder="ID,Work Item Type,Title,Area Path,Iteration Path,State,Story Points,Original Estimate,Completed Work,Start Date,Target Date,Activated Date,Resolved Date,Tags,Parent
+1,Epic,E-Commerce Platform,,,,,,,,,,,,
+2,Feature,User Authentication,,,,,,,,2025-01-10,2025-02-15,,,1
+3,User Story,Login page UI,,,Active,,16,,2025-01-10,2025-01-15,,,
+..."></textarea>
+      </div>
+
+      <div class="flex gap-3">
+        <button onclick="convertADO()" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold text-sm">🔄 Convert to Sprint Estimator Format</button>
+        <button onclick="loadSampleIntoConverter()" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-semibold text-sm">📋 Load Sample Data</button>
+        <button onclick="document.getElementById('adoInput').value=''" class="px-4 py-2.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-semibold text-sm">✕ Clear</button>
+      </div>
+    </div>
+
+    <div id="converterOutput" class="hidden bg-white rounded-xl shadow p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg">✅ Converted Output — Sprint Estimator Format</h3>
+        <button onclick="downloadConverted()" class="px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold text-sm">⬇ Download as CSV</button>
+      </div>
+      <div id="conversionStats" class="grid grid-cols-4 gap-3 mb-4 text-center text-sm"></div>
+      <textarea id="seOutput" rows="12" readonly class="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50"></textarea>
+      <div id="converterWarnings" class="mt-3"></div>
+    </div>
+  </div>
+
+  <!-- TAB: EXPORT GUIDE -->
+  <div id="tab-guide" class="tab-panel hidden">
+    <div class="bg-white rounded-xl shadow p-6 mb-6">
+      <h2 class="text-lg font-bold mb-4">📖 How to Export from Azure DevOps</h2>
+
+      <div class="space-y-6">
+        <div class="border-l-4 border-blue-500 pl-5">
+          <h3 class="font-bold mb-2">Step 1 — Create a Flat Query in ADO</h3>
+          <p class="text-sm text-gray-600 mb-2">Go to <strong>Boards → Queries → New Query</strong>. Set query type to <strong>"Flat list of work items"</strong>.</p>
+          <div class="bg-gray-50 rounded p-3 text-xs font-mono">
+            Work Item Type = Epic OR Feature OR User Story<br>
+            AND Team Project = [Your Project]<br>
+            AND Iteration Path UNDER [Your Sprint/Release]
+          </div>
+        </div>
+
+        <div class="border-l-4 border-blue-500 pl-5">
+          <h3 class="font-bold mb-2">Step 2 — Add Required Columns to the Query</h3>
+          <p class="text-sm text-gray-600 mb-2">In the query results, click <strong>Column Options</strong> and add these fields:</p>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+            <div class="bg-blue-50 px-3 py-2 rounded font-mono">ID</div>
+            <div class="bg-blue-50 px-3 py-2 rounded font-mono">Work Item Type</div>
+            <div class="bg-blue-50 px-3 py-2 rounded font-mono">Title</div>
+            <div class="bg-blue-50 px-3 py-2 rounded font-mono">State</div>
+            <div class="bg-blue-50 px-3 py-2 rounded font-mono">Area Path</div>
+            <div class="bg-blue-50 px-3 py-2 rounded font-mono">Iteration Path</div>
+            <div class="bg-blue-50 px-3 py-2 rounded font-mono">Story Points</div>
+            <div class="bg-blue-50 px-3 py-2 rounded font-mono">Original Estimate</div>
+            <div class="bg-blue-50 px-3 py-2 rounded font-mono">Completed Work</div>
+            <div class="bg-blue-50 px-3 py-2 rounded font-mono">Start Date</div>
+            <div class="bg-blue-50 px-3 py-2 rounded font-mono">Target Date</div>
+            <div class="bg-blue-50 px-3 py-2 rounded font-mono">Activated Date</div>
+            <div class="bg-blue-50 px-3 py-2 rounded font-mono">Resolved Date</div>
+            <div class="bg-blue-50 px-3 py-2 rounded font-mono">Tags</div>
+            <div class="bg-blue-50 px-3 py-2 rounded font-mono">Parent</div>
+          </div>
+        </div>
+
+        <div class="border-l-4 border-blue-500 pl-5">
+          <h3 class="font-bold mb-2">Step 3 — Export to CSV</h3>
+          <p class="text-sm text-gray-600">Click the <strong>⋯ More options</strong> menu in the query results toolbar → <strong>Export to CSV</strong>. The file downloads as <code>WorkItems.csv</code>.</p>
+        </div>
+
+        <div class="border-l-4 border-yellow-500 pl-5">
+          <h3 class="font-bold mb-2">Step 4 — Handle Hierarchy (Parent Mapping)</h3>
+          <p class="text-sm text-gray-600 mb-2">ADO exports a flat list. To get the parent Feature name for each User Story:</p>
+          <ul class="text-sm text-gray-600 space-y-1 list-disc list-inside">
+            <li>In the exported CSV, <strong>User Story rows have a Parent ID</strong> that points to a Feature row</li>
+            <li>The converter tool on this page handles this automatically via the Parent column</li>
+            <li>Alternatively, run a <strong>Tree of Work Items</strong> query type and export — this shows parent-child directly</li>
+          </ul>
+        </div>
+
+        <div class="border-l-4 border-green-500 pl-5">
+          <h3 class="font-bold mb-2">Step 5 — Get Defect Counts (SIT / UAT)</h3>
+          <p class="text-sm text-gray-600 mb-2">Run a separate Bug query filtered by tag or iteration to count SIT vs UAT defects:</p>
+          <div class="bg-gray-50 rounded p-3 text-xs font-mono">
+            Work Item Type = Bug<br>
+            AND Tags CONTAINS "SIT" → SIT Defects count<br>
+            AND Tags CONTAINS "UAT" → UAT Defects count
+          </div>
+          <p class="text-sm text-gray-500 mt-2">Add these counts manually to the Sprint Estimator import or Productivity Tracker.</p>
+        </div>
+
+        <div class="border-l-4 border-purple-500 pl-5">
+          <h3 class="font-bold mb-2">Step 6 — Upload to Sprint Estimator</h3>
+          <p class="text-sm text-gray-600">Use the <strong>🔄 Live Converter</strong> tab to convert your ADO CSV to Sprint Estimator format, then upload via <strong>📊 Import Excel → Upload &amp; Import</strong> in Sprint Estimator V4.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow p-6">
+      <h3 class="font-bold mb-3">🔑 Key ADO Field Notes</h3>
+      <table class="w-full text-sm">
+        <thead><tr class="bg-gray-50"><th class="px-4 py-2 text-left">ADO Field</th><th class="px-4 py-2 text-left">Format</th><th class="px-4 py-2 text-left">Notes</th></tr></thead>
+        <tbody>
+          <tr class="border-b"><td class="px-4 py-2 font-mono text-blue-700">Original Estimate</td><td class="px-4 py-2">Hours (float)</td><td class="px-4 py-2 text-gray-600">Maps to Story Hours (Est). Set this via the Detailed tab in ADO work item</td></tr>
+          <tr class="border-b bg-gray-50"><td class="px-4 py-2 font-mono text-blue-700">Completed Work</td><td class="px-4 py-2">Hours (float)</td><td class="px-4 py-2 text-gray-600">Maps to Story Hours (Actual). Updated by team as work progresses</td></tr>
+          <tr class="border-b"><td class="px-4 py-2 font-mono text-blue-700">Start Date</td><td class="px-4 py-2">MM/DD/YYYY</td><td class="px-4 py-2 text-gray-600">Estimated start — converter auto-converts to YYYY-MM-DD</td></tr>
+          <tr class="border-b bg-gray-50"><td class="px-4 py-2 font-mono text-blue-700">Target Date</td><td class="px-4 py-2">MM/DD/YYYY</td><td class="px-4 py-2 text-gray-600">Estimated end date for the work item</td></tr>
+          <tr class="border-b"><td class="px-4 py-2 font-mono text-blue-700">Activated Date</td><td class="px-4 py-2">MM/DD/YYYY HH:MM</td><td class="px-4 py-2 text-gray-600">When work actually started — date portion extracted by converter</td></tr>
+          <tr class="border-b bg-gray-50"><td class="px-4 py-2 font-mono text-blue-700">Resolved Date</td><td class="px-4 py-2">MM/DD/YYYY HH:MM</td><td class="px-4 py-2 text-gray-600">When story was marked Done/Closed — maps to Story End Date (Actual)</td></tr>
+          <tr class="border-b"><td class="px-4 py-2 font-mono text-blue-700">State</td><td class="px-4 py-2">String</td><td class="px-4 py-2 text-gray-600">Done / Closed / Resolved = Is Completed TRUE; others = FALSE</td></tr>
+          <tr class="bg-gray-50"><td class="px-4 py-2 font-mono text-blue-700">Area Path</td><td class="px-4 py-2">String</td><td class="px-4 py-2 text-gray-600">Used as Project Name (first segment before backslash)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- end container -->
+
+<script>
+// ─── Field mapping data ──────────────────────────────────────────────────────
+const MAPPING = [
+  { se:'Project Name',           ado:'Area Path (first segment)',       type:'ado',     wit:'All types',     notes:'Split on \\ and take index [0] e.g. "Contoso\\WebApp" → "Contoso"' },
+  { se:'Project Description',    ado:'[Epic] Description / Tags',       type:'manual',  wit:'Epic',          notes:'No standard ADO field; enter manually or pull from Epic Description' },
+  { se:'Feature Name',           ado:'Title',                           type:'ado',     wit:'Feature',       notes:'Title of the Feature work item linked as Parent of the User Story' },
+  { se:'Org Productivity',       ado:'—',                               type:'manual',  wit:'—',             notes:'Not in ADO; org-level constant (e.g. 2.0). Set once per import batch' },
+  { se:'Man Days Hours',         ado:'—',                               type:'manual',  wit:'—',             notes:'Not in ADO; team hours/day (e.g. 8). Set once per import batch' },
+  { se:'Feature Start Date',     ado:'Start Date (min of children)',    type:'derived', wit:'User Story',    notes:'MIN of all child User Story Start Dates for the Feature' },
+  { se:'Feature End Date',       ado:'Target Date (max of children)',   type:'derived', wit:'User Story',    notes:'MAX of all child User Story Target Dates for the Feature' },
+  { se:'SIT Defects',            ado:'Bug count tagged "SIT"',          type:'manual',  wit:'Bug',           notes:'Run separate Bug query filtered by Tag=SIT per Feature/Iteration' },
+  { se:'UAT Defects',            ado:'Bug count tagged "UAT"',          type:'manual',  wit:'Bug',           notes:'Run separate Bug query filtered by Tag=UAT per Feature/Iteration' },
+  { se:'Story Title',            ado:'Title',                           type:'ado',     wit:'User Story',    notes:'Title field of the User Story work item' },
+  { se:'Story Hours (Est)',      ado:'Original Estimate',               type:'ado',     wit:'User Story',    notes:'Set via Detailed tab → Planning section in the work item form' },
+  { se:'Story Start Date (Est)', ado:'Start Date',                      type:'ado',     wit:'User Story',    notes:'Feature backlog date; converter converts MM/DD/YYYY → YYYY-MM-DD' },
+  { se:'Story End Date (Est)',   ado:'Target Date',                     type:'ado',     wit:'User Story',    notes:'Target completion; converter converts MM/DD/YYYY → YYYY-MM-DD' },
+  { se:'Is Completed',           ado:'State',                           type:'derived', wit:'User Story',    notes:'TRUE when State ∈ {Done, Closed, Resolved}; FALSE otherwise' },
+  { se:'Story Hours (Actual)',   ado:'Completed Work',                  type:'ado',     wit:'User Story',    notes:'Actual hours logged via task rollup or directly on the story' },
+  { se:'Story Start Date (Act)', ado:'Activated Date',                  type:'ado',     wit:'User Story',    notes:'Date item moved to Active; converter strips time portion' },
+  { se:'Story End Date (Act)',   ado:'Resolved Date',                   type:'ado',     wit:'User Story',    notes:'Date item moved to Done/Resolved; converter strips time portion' },
+  { se:'Actual Requirements MD', ado:'—',                               type:'manual',  wit:'—',             notes:'Not tracked per-story in ADO; enter feature-level after import' },
+  { se:'Actual Design MD',       ado:'—',                               type:'manual',  wit:'—',             notes:'Not tracked per-story in ADO; enter feature-level after import' },
+  { se:'Actual Testing MD',      ado:'—',                               type:'manual',  wit:'—',             notes:'Not tracked per-story in ADO; enter feature-level after import' },
+  { se:'Actual PM MD',           ado:'—',                               type:'manual',  wit:'—',             notes:'Not tracked per-story in ADO; enter feature-level after import' },
+];
+
+const TYPE_BADGE = {
+  ado:     '<span class="badge badge-ado">ADO</span>',
+  manual:  '<span class="badge badge-manual">Manual</span>',
+  derived: '<span class="badge badge-derived">Auto-Derived</span>',
+};
+
+// ─── Render mapping table ────────────────────────────────────────────────────
+function buildMappingTable() {
+  const tbody = document.getElementById('mapTable');
+  tbody.innerHTML = MAPPING.map((m,i) => `
+    <tr class="map-row border-b border-gray-100">
+      <td class="px-4 py-3 text-gray-400 text-xs font-mono">${String(i+1).padStart(2,'0')}</td>
+      <td class="px-4 py-3 font-semibold text-purple-800 text-sm">${m.se}</td>
+      <td class="px-4 py-3 font-mono text-blue-700 text-xs">${m.ado}</td>
+      <td class="px-4 py-3 text-gray-500 text-xs">${m.wit}</td>
+      <td class="px-4 py-3">${TYPE_BADGE[m.type]} <span class="text-xs text-gray-500 ml-2">${m.notes}</span></td>
+    </tr>`).join('');
+}
+
+// ─── Sample data ─────────────────────────────────────────────────────────────
+// ADO-style flat export (what ADO actually exports)
+const ADO_SAMPLE_ROWS = [
+  ['ID','Work Item Type','Title','Area Path','Iteration Path','State','Story Points','Original Estimate','Completed Work','Start Date','Target Date','Activated Date','Resolved Date','Tags','Parent'],
+  // Epic
+  ['1','Epic','E-Commerce Platform','Contoso\\E-Commerce','Contoso\\2025\\Q1','Active','','','','','','','','',''],
+  // Feature 1
+  ['2','Feature','User Authentication','Contoso\\E-Commerce','Contoso\\2025\\Q1','Done','','','','01/10/2025','02/15/2025','01/10/2025','02/16/2025','','1'],
+  // Stories under Feature 1
+  ['3','User Story','Login page UI','Contoso\\E-Commerce','Contoso\\2025\\Sprint 1','Done','','16','18','01/10/2025','01/15/2025','01/11/2025','01/16/2025','','2'],
+  ['4','User Story','Registration form','Contoso\\E-Commerce','Contoso\\2025\\Sprint 1','Done','','24','26','01/16/2025','01/22/2025','01/17/2025','01/24/2025','','2'],
+  ['5','User Story','Password reset flow','Contoso\\E-Commerce','Contoso\\2025\\Sprint 2','Done','','8','10','01/23/2025','01/25/2025','01/24/2025','01/26/2025','','2'],
+  // Feature 2
+  ['6','Feature','Product Catalog','Contoso\\E-Commerce','Contoso\\2025\\Q1','Active','','','','02/01/2025','03/15/2025','02/01/2025','','','1'],
+  ['7','User Story','Product listing page','Contoso\\E-Commerce','Contoso\\2025\\Sprint 3','Done','','20','22','02/01/2025','02/08/2025','02/02/2025','02/09/2025','','6'],
+  ['8','User Story','Search functionality','Contoso\\E-Commerce','Contoso\\2025\\Sprint 3','Active','','32','','02/09/2025','02/20/2025','02/10/2025','','','6'],
+  ['9','User Story','Filter by category','Contoso\\E-Commerce','Contoso\\2025\\Sprint 4','New','','16','','02/21/2025','02/28/2025','','','','6'],
+  // Epic 2
+  ['10','Epic','Mobile App','Contoso\\Mobile','Contoso\\2025\\Q1','Active','','','','','','','','',''],
+  // Feature 3
+  ['11','Feature','Dashboard','Contoso\\Mobile','Contoso\\2025\\Q1','Done','','','','01/20/2025','02/28/2025','01/20/2025','03/01/2025','','10'],
+  ['12','User Story','Home screen layout','Contoso\\Mobile','Contoso\\2025\\Sprint 1','Done','','12','14','01/20/2025','01/24/2025','01/21/2025','01/25/2025','','11'],
+  ['13','User Story','Charts and graphs','Contoso\\Mobile','Contoso\\2025\\Sprint 1','Done','','16','18','01/25/2025','01/30/2025','01/26/2025','01/31/2025','','11'],
+  ['14','User Story','Notifications panel','Contoso\\Mobile','Contoso\\2025\\Sprint 2','Active','','10','','01/31/2025','02/05/2025','02/01/2025','','','11'],
+];
+
+// SE-format equivalent of the same data (21 columns)
+const SE_SAMPLE_ROWS = [
+  ['Project Name','Project Description','Feature Name','Org Productivity','Man Days Hours','Feature Start Date','Feature End Date','SIT Defects','UAT Defects','Story Title','Story Hours (Est)','Story Start Date (Est)','Story End Date (Est)','Is Completed','Story Hours (Actual)','Story Start Date (Actual)','Story End Date (Actual)','Actual Requirements MD','Actual Design MD','Actual Testing MD','Actual PM MD'],
+  ['E-Commerce','E-Commerce Platform','User Authentication','2','8','2025-01-10','2025-02-15','18','2','Login page UI','16','2025-01-10','2025-01-15','TRUE','18','2025-01-11','2025-01-16','','','',''],
+  ['E-Commerce','E-Commerce Platform','User Authentication','2','8','2025-01-10','2025-02-15','18','2','Registration form','24','2025-01-16','2025-01-22','TRUE','26','2025-01-17','2025-01-24','','','',''],
+  ['E-Commerce','E-Commerce Platform','User Authentication','2','8','2025-01-10','2025-02-15','18','2','Password reset flow','8','2025-01-23','2025-01-25','TRUE','10','2025-01-24','2025-01-26','3.5','2.8','4.2','2.5'],
+  ['E-Commerce','E-Commerce Platform','Product Catalog','2','8','2025-02-01','2025-03-15','15','5','Product listing page','20','2025-02-01','2025-02-08','TRUE','22','2025-02-02','2025-02-09','','','',''],
+  ['E-Commerce','E-Commerce Platform','Product Catalog','2','8','2025-02-01','2025-03-15','15','5','Search functionality','32','2025-02-09','2025-02-20','FALSE','','','','','','',''],
+  ['E-Commerce','E-Commerce Platform','Product Catalog','2','8','2025-02-01','2025-03-15','15','5','Filter by category','16','2025-02-21','2025-02-28','FALSE','','','','','','',''],
+  ['Mobile','Mobile App','Dashboard','1.8','8','2025-01-20','2025-02-28','12','3','Home screen layout','12','2025-01-20','2025-01-24','TRUE','14','2025-01-21','2025-01-25','','','',''],
+  ['Mobile','Mobile App','Dashboard','1.8','8','2025-01-20','2025-02-28','12','3','Charts and graphs','16','2025-01-25','2025-01-30','TRUE','18','2025-01-26','2025-01-31','2.2','1.8','3.5','2.0'],
+  ['Mobile','Mobile App','Dashboard','1.8','8','2025-01-20','2025-02-28','12','3','Notifications panel','10','2025-01-31','2025-02-05','FALSE','','','','','','',''],
+];
+
+// ─── Render preview table ────────────────────────────────────────────────────
+function buildPreviewTable() {
+  const tbl = document.getElementById('previewTable');
+  const rows = ADO_SAMPLE_ROWS;
+  tbl.innerHTML = rows.map((row, ri) =>
+    ri === 0
+      ? `<tr>${row.map(c=>`<th class="px-2 py-1 bg-blue-600 text-white text-left font-semibold border border-blue-500 whitespace-nowrap">${c}</th>`).join('')}</tr>`
+      : `<tr class="${ri%2===0?'bg-white':'bg-gray-50'}">${row.map((c,ci)=>`<td class="px-2 py-1 border border-gray-100 whitespace-nowrap ${ci===1?'font-semibold text-blue-700':''}">${c}</td>`).join('')}</tr>`
+  ).join('');
+}
+
+// ─── Download helpers ─────────────────────────────────────────────────────────
+function rowsToCSV(rows) {
+  return rows.map(r => r.map(v => {
+    const s = String(v);
+    return (s.includes(',') || s.includes('"') || s.includes('\n'))
+      ? `"${s.replace(/"/g,'""')}"`
+      : s;
+  }).join(',')).join('\n');
+}
+function downloadCSV(content, filename) {
+  const blob = new Blob([content], { type:'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+function downloadADOTemplate()    { downloadCSV(rowsToCSV(ADO_SAMPLE_ROWS), 'ado_export_sprint_estimator_template.csv'); }
+function downloadSETemplate()     { downloadCSV(rowsToCSV(SE_SAMPLE_ROWS),  'sprint_estimator_ready_template.csv'); }
+function downloadMappingSheet() {
+  const rows = [
+    ['#','Sprint Estimator Column','Azure DevOps Field','Source Type','Work Item Type','Transformation Notes'],
+    ...MAPPING.map((m,i)=>[i+1, m.se, m.ado, m.type, m.wit, m.notes])
+  ];
+  downloadCSV(rowsToCSV(rows), 'ado_sprint_estimator_field_mapping.csv');
+}
+
+// ─── Date conversion helpers ─────────────────────────────────────────────────
+function parseADODate(raw) {
+  if (!raw || !raw.trim()) return '';
+  // Strip time portion if present (e.g. "01/10/2025 9:00 AM")
+  const datePart = raw.trim().split(' ')[0];
+  // Handle MM/DD/YYYY
+  const m1 = datePart.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m1) return `${m1[3]}-${m1[1].padStart(2,'0')}-${m1[2].padStart(2,'0')}`;
+  // Handle YYYY-MM-DD (already correct)
+  if (/^\d{4}-\d{2}-\d{2}/.test(datePart)) return datePart.substring(0,10);
+  return '';
+}
+
+function stateToCompleted(state) {
+  return ['done','closed','resolved'].includes((state||'').toLowerCase().trim()) ? 'TRUE' : 'FALSE';
+}
+
+function areaToProject(areaPath) {
+  return (areaPath || '').split('\\')[0].trim();
+}
+
+// ─── Main converter ──────────────────────────────────────────────────────────
+function convertADO() {
+  const raw = document.getElementById('adoInput').value.trim();
+  const orgProd = parseFloat(document.getElementById('defaultOrgProd').value) || 2;
+  const mdh     = parseFloat(document.getElementById('defaultMDH').value)     || 8;
+  const warnings = [];
+
+  if (!raw) { alert('Please paste ADO CSV data first'); return; }
+
+  // Parse CSV
+  const lines = raw.split('\n').filter(l => l.trim());
+  const parseRow = line => {
+    const result = [];
+    let cur = '', inQ = false;
+    for (let ci = 0; ci < line.length; ci++) {
+      const ch = line[ci];
+      if (ch === '"' && !inQ)        { inQ = true; }
+      else if (ch === '"' && inQ) {
+        if (line[ci+1] === '"')      { cur += '"'; ci++; }
+        else                         { inQ = false; }
+      }
+      else if (ch === ',' && !inQ)   { result.push(cur.trim()); cur = ''; }
+      else                           { cur += ch; }
+    }
+    result.push(cur.trim());
+    return result;
+  };
+
+  const [headerRow, ...dataRows] = lines.map(parseRow);
+  const h = col => headerRow.findIndex(c => c.toLowerCase().replace(/\s+/g,'') === col.toLowerCase().replace(/\s+/g,''));
+
+  const idx = {
+    id:        h('ID'),
+    type:      h('Work Item Type'),
+    title:     h('Title'),
+    area:      h('Area Path'),
+    state:     h('State'),
+    origEst:   h('Original Estimate'),
+    completed: h('Completed Work'),
+    startEst:  h('Start Date'),
+    endEst:    h('Target Date'),
+    startAct:  h('Activated Date'),
+    endAct:    h('Resolved Date'),
+    parent:    h('Parent'),
+    desc:      h('Description'),
+  };
+
+  const g = (row, k) => (idx[k] >= 0 ? (row[idx[k]] || '').trim() : '');
+
+  // Index work items by ID
+  const itemsById = {};
+  dataRows.forEach(row => {
+    const id = g(row, 'id');
+    if (id) itemsById[id] = row;
+  });
+
+  // Group: build project → feature → story structure
+  const projects = {};   // project name → { desc, features: { fname → { ...meta, stories:[] } } }
+
+  dataRows.forEach(row => {
+    const type = g(row, 'type').toLowerCase();
+    if (type !== 'user story') return;
+
+    const projName = areaToProject(g(row, 'area')) || 'Unknown Project';
+
+    // Find parent feature title
+    const parentId = g(row, 'parent');
+    let featureName = 'Unknown Feature';
+    let featStartRaw = '', featEndRaw = '';
+
+    if (parentId && itemsById[parentId]) {
+      const parentRow = itemsById[parentId];
+      featureName  = g(parentRow, 'title') || 'Unknown Feature';
+      featStartRaw = g(parentRow, 'startEst');
+      featEndRaw   = g(parentRow, 'endEst');
+    } else {
+      warnings.push(`Story "${g(row,'title')}" (ID ${g(row,'id')}) has no Parent mapped to a Feature.`);
+    }
+
+    if (!projects[projName]) {
+      // Try to find epic description
+      projects[projName] = { desc: '', features: {} };
+    }
+    if (!projects[projName].features[featureName]) {
+      projects[projName].features[featureName] = {
+        featStartRaw,
+        featEndRaw,
+        stories: []
+      };
+    }
+
+    projects[projName].features[featureName].stories.push({
+      title:    g(row, 'title'),
+      origEst:  g(row, 'origEst'),
+      startEst: g(row, 'startEst'),
+      endEst:   g(row, 'endEst'),
+      state:    g(row, 'state'),
+      cmpWork:  g(row, 'completed'),
+      startAct: g(row, 'startAct'),
+      endAct:   g(row, 'endAct'),
+    });
+  });
+
+  // Build SE output rows
+  const seRows = [SE_SAMPLE_ROWS[0]]; // header
+  let pCt = 0, fCt = 0, sCt = 0;
+
+  Object.entries(projects).forEach(([pName, pData]) => {
+    pCt++;
+    Object.entries(pData.features).forEach(([fName, fData]) => {
+      fCt++;
+      // Derive feature dates from children if not set
+      let featStart = parseADODate(fData.featStartRaw);
+      let featEnd   = parseADODate(fData.featEndRaw);
+      if (!featStart) {
+        const starts = fData.stories.map(s => parseADODate(s.startEst)).filter(Boolean).sort();
+        featStart = starts[0] || '';
+      }
+      if (!featEnd) {
+        const ends = fData.stories.map(s => parseADODate(s.endEst)).filter(Boolean).sort();
+        featEnd = ends[ends.length-1] || '';
+      }
+
+      fData.stories.forEach(s => {
+        sCt++;
+        seRows.push([
+          pName,
+          pData.desc,
+          fName,
+          orgProd,
+          mdh,
+          featStart,
+          featEnd,
+          '',               // SIT — manual
+          '',               // UAT — manual
+          s.title,
+          s.origEst || '',
+          parseADODate(s.startEst),
+          parseADODate(s.endEst),
+          stateToCompleted(s.state),
+          s.cmpWork || '',
+          parseADODate(s.startAct),
+          parseADODate(s.endAct),
+          '',               // Req MD — manual
+          '',               // Des MD — manual
+          '',               // Test MD — manual
+          '',               // PM MD — manual
+        ]);
+      });
+    });
+  });
+
+  if (seRows.length <= 1) {
+    alert('No User Story items found. Make sure your ADO export includes "User Story" work items and the "Work Item Type" column.');
+    return;
+  }
+
+  const csv = rowsToCSV(seRows);
+  document.getElementById('seOutput').value = csv;
+  document.getElementById('converterOutput').classList.remove('hidden');
+
+  document.getElementById('conversionStats').innerHTML = [
+    { label:'Projects', value:pCt, color:'blue' },
+    { label:'Features',  value:fCt, color:'purple' },
+    { label:'Stories',   value:sCt, color:'green' },
+    { label:'Warnings',  value:warnings.length, color:warnings.length?'red':'gray' },
+  ].map(s => `<div class="bg-${s.color}-50 rounded-lg p-3 border border-${s.color}-200">
+    <p class="text-xs text-${s.color}-600 font-semibold">${s.label}</p>
+    <p class="text-2xl font-bold text-${s.color}-800">${s.value}</p></div>`).join('');
+
+  const warnEl = document.getElementById('converterWarnings');
+  if (warnings.length) {
+    warnEl.innerHTML = `<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm">
+      <p class="font-bold text-yellow-800 mb-2">⚠ ${warnings.length} Warning(s)</p>
+      <ul class="space-y-1 text-yellow-700 list-disc list-inside">${warnings.map(w=>`<li>${w}</li>`).join('')}</ul>
+    </div>`;
+  } else { warnEl.innerHTML = ''; }
+
+  window._convertedCSV = csv;
+}
+
+function downloadConverted() {
+  if (window._convertedCSV) downloadCSV(window._convertedCSV, 'sprint_estimator_converted.csv');
+}
+
+function loadSampleIntoConverter() {
+  document.getElementById('adoInput').value = rowsToCSV(ADO_SAMPLE_ROWS);
+}
+
+// ─── Tab switching ────────────────────────────────────────────────────────────
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.remove('hidden');
+  btn.classList.add('active');
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+buildMappingTable();
+buildPreviewTable();
+</script>
+
+</body>
+</html>
