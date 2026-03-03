@@ -135,7 +135,6 @@ try {
                         (($actualDevEffortsPeriod - $proportionalEstimate) / $proportionalEstimate) * 100 : 0;
                     
                     // Ontime index for period
-                    // Get stories completed in period and check if they were on time
                     $ontimeQuery = "
                         SELECT COUNT(*) as ontime_count
                         FROM productivity_data pd
@@ -155,7 +154,6 @@ try {
                     
                 } else {
                     // TARGET MODE: Use all feature data (existing logic)
-                    // Get productivity data for entire feature
                     $prodQuery = "
                         SELECT AVG(productivity) as avg_prod,
                             SUM(efforts_man_days) as actual_dev_md,
@@ -223,10 +221,19 @@ try {
                 $featureCount++;
             }
             
-            // No features with KPI data — still include the project
-            // so it appears in the dashboard (and the A-Z navigator)
-            // but with zeroed-out metrics.
+            // ---------------------------------------------------------------
+            // No features matched for this project.
+            // - With an active date filter  → skip the project entirely so only
+            //   projects with data in the selected range are shown.
+            // - Without a date filter        → include the project with zeroed
+            //   metrics so it still appears in the dashboard / A-Z navigator.
+            // ---------------------------------------------------------------
             if ($featureCount == 0) {
+                if ($filterStartDate && $filterEndDate) {
+                    // Active filter — exclude this project from results
+                    continue;
+                }
+                // No filter — show with zeroed metrics
                 $projects[] = [
                     'id'               => (int)$p['id'],
                     'name'             => $p['name'],
