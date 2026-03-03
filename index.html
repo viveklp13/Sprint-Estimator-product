@@ -110,16 +110,20 @@
                 <h2 class="text-2xl font-bold">📊 Import from Excel</h2>
                 <button onclick="closeImportModal()" class="text-2xl hover:text-red-600">&times;</button>
             </div>
-            
+
+            <!-- Step 1: Download Templates -->
+            <div class="mb-2">
+                <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Step 1 — Download a Template</p>
+            </div>
             <div class="grid grid-cols-2 gap-4 mb-6">
                 <div class="p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
                     <h3 class="font-semibold mb-2">📥 Basic Template</h3>
-                    <p class="text-sm text-gray-600 mb-3">For planning & estimation only (11 columns)</p>
+                    <p class="text-sm text-gray-600 mb-3">For planning &amp; estimation only (11 columns)</p>
                     <button onclick="downloadBasicTemplate()" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                         ⬇ Download Basic
                     </button>
                 </div>
-                
+
                 <div class="p-4 bg-purple-50 rounded-lg border-2 border-purple-200">
                     <h3 class="font-semibold mb-2">📥 Complete Template</h3>
                     <p class="text-sm text-gray-600 mb-3">Includes productivity tracking (21 columns)</p>
@@ -128,22 +132,72 @@
                     </button>
                 </div>
             </div>
-            
+
+            <!-- Step 2: Convert from ADO or Jira -->
+            <div class="mb-2">
+                <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Step 2 (Optional) — Convert from External Tools</p>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <!-- Azure DevOps Converter -->
+                <div class="p-4 bg-sky-50 rounded-lg border-2 border-sky-300">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-xl">🔵</span>
+                        <h3 class="font-semibold text-sky-800">Azure DevOps Converter</h3>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-1">Export from ADO and convert to Sprint Estimator format.</p>
+                    <ul class="text-xs text-gray-500 mb-3 space-y-0.5">
+                        <li>✓ Field mapping reference</li>
+                        <li>✓ Live CSV converter</li>
+                        <li>✓ ADO export guide</li>
+                    </ul>
+                    <button onclick="openConverter('ado_sprint_estimator_mapper.html')"
+                            class="w-full px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 font-semibold text-sm flex items-center justify-center gap-2">
+                        🔄 Open ADO Converter
+                    </button>
+                </div>
+
+                <!-- Jira Converter -->
+                <div class="p-4 bg-indigo-50 rounded-lg border-2 border-indigo-300">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-xl">🔵</span>
+                        <h3 class="font-semibold text-indigo-800">Jira Converter</h3>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-1">Export from Jira and convert to Sprint Estimator format.</p>
+                    <ul class="text-xs text-gray-500 mb-3 space-y-0.5">
+                        <li>✓ Field mapping reference</li>
+                        <li>✓ Live CSV converter</li>
+                        <li>✓ Jira export guide</li>
+                    </ul>
+                    <button onclick="openConverter('jira_sprint_estimator_mapper.html')"
+                            class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold text-sm flex items-center justify-center gap-2">
+                        🔄 Open Jira Converter
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-1 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                <strong>💡 Workflow:</strong> Open a converter above → paste your ADO/Jira CSV → download the converted file → upload it below.
+            </div>
+
+            <!-- Step 3: Upload -->
+            <div class="mt-4 mb-1">
+                <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Step 3 — Upload &amp; Import</p>
+            </div>
             <div class="mb-6 p-4 bg-yellow-50 rounded-lg">
                 <h3 class="font-semibold mb-2">📤 Upload Filled Template</h3>
-                <p class="text-sm text-gray-600 mb-3">After filling, save as CSV and upload here</p>
+                <p class="text-sm text-gray-600 mb-3">After filling (or converting), save as CSV and upload here</p>
                 <input type="file" id="importFile" accept=".csv" class="mb-3 w-full p-2 border rounded">
                 <button onclick="uploadFile()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-                    📤 Upload & Import
+                    📤 Upload &amp; Import
                 </button>
             </div>
-            
+
             <div id="importProgress" class="hidden mb-4 p-4 bg-yellow-50 rounded-lg">
                 <p class="text-center">⏳ Processing...</p>
             </div>
-            
+
             <div id="importResult" class="hidden"></div>
-            
+
             <div class="mt-4 p-4 bg-gray-50 rounded-lg text-sm">
                 <h4 class="font-semibold mb-2">ℹ️ Important:</h4>
                 <ul class="list-disc list-inside space-y-1 text-gray-600">
@@ -151,6 +205,7 @@
                     <li><strong>Basic:</strong> Project planning only</li>
                     <li><strong>Complete:</strong> Includes actual hours, defects, phase efforts</li>
                     <li>Both templates work with the same import</li>
+                    <li>ADO &amp; Jira converters output the Complete format automatically</li>
                 </ul>
             </div>
         </div>
@@ -1957,6 +2012,11 @@ function showChart(projectId, type) {
             }
         }
 
+        // ===== Converter Launcher =====
+        function openConverter(filename) {
+            // Opens ADO or Jira mapper tool in a new browser tab
+            window.open(filename, '_blank');
+        }
         
         // ===== Excel Import Functions =====
         function openImportModal() {
